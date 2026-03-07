@@ -1,10 +1,17 @@
 package at.ac.hcw.se
 
+import at.ac.hcw.se.dto.UserLoginRequest
+import at.ac.hcw.se.dto.UserRegistration
+import at.ac.hcw.se.dto.UserResponse
+import at.ac.hcw.se.dto.UserUpdate
+import io.ktor.client.call.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.cookies.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.testing.*
-import java.util.Base64
+import java.util.UUID
 import kotlin.test.*
 
 class ApplicationTest {
@@ -17,60 +24,161 @@ class ApplicationTest {
             block()
         }
 
-    private fun basicAuthHeader(user: String, password: String): String =
-        "Basic ${Base64.getEncoder().encodeToString("$user:$password".toByteArray())}"
+    private fun ApplicationTestBuilder.jsonClient() = createClient {
+        install(ContentNegotiation) { json() }
+        install(HttpCookies)
+    }
 
-    // ── Routing ──────────────────────────────────────────────────────────────
+    private fun uniqueUser(): UserRegistration {
+        val id = UUID.randomUUID().toString().take(8)
+        return UserRegistration(
+            username = "user_$id",
+            email = "$id@example.com",
+            password = "password123",
+            firstName = "Test",
+            lastName = "User",
+            licenseNumber = "LIC$id",
+            licenseValidUntil = "2030-12-31",
+        )
+    }
+
+    // ── Auth ─────────────────────────────────────────────────────────────────
 
     @Test
-    fun testRoot() = testApp {
-        client.get("/").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertEquals("Hello World!", bodyAsText())
+    fun testRegisterUser() = testApp {
+        val client = jsonClient()
+        client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(uniqueUser())
+        }.apply {
+            assertEquals(HttpStatusCode.Created, status)
         }
     }
 
-    // ── Security ─────────────────────────────────────────────────────────────
-
     @Test
-    fun testBasicAuthSuccess() = testApp {
-        client.get("/protected/route/basic") {
-            headers.append(HttpHeaders.Authorization, basicAuthHeader("admin", "admin"))
+    fun testLoginSuccess() = testApp {
+        val client = jsonClient()
+        val user = uniqueUser()
+        client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(user)
+        }
+        client.post("/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(UserLoginRequest(user.username, user.password))
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            assertEquals("Hello admin", bodyAsText())
         }
     }
 
     @Test
-    fun testBasicAuthWrongPassword() = testApp {
-        client.get("/protected/route/basic") {
-            headers.append(HttpHeaders.Authorization, basicAuthHeader("user", "wrongpassword"))
+    fun testLoginInvalidCredentials() = testApp {
+        val client = jsonClient()
+        val user = uniqueUser()
+        client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(user)
+        }
+        client.post("/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(UserLoginRequest(user.username, "wrongpassword"))
         }.apply {
             assertEquals(HttpStatusCode.Unauthorized, status)
         }
     }
 
     @Test
-    fun testBasicAuthNoCredentials() = testApp {
-        client.get("/protected/route/basic").apply {
+    fun testLogout() = testApp {
+        val client = jsonClient()
+        client.post("/auth/logout").apply {
+            assertEquals(HttpStatusCode.NoContent, status)
+        }
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+
+    @Test
+    fun testGetUserProfile() = testApp {
+        val client = jsonClient()
+        val user = uniqueUser()
+        val id = client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(user)
+        }.body<Map<String, Int>>()["id"]!!
+        client.post("/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(UserLoginRequest(user.username, user.password))
+        }
+        client.get("/users/$id").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            assertEquals(user.username, body<UserResponse>().username)
+        }
+    }
+
+    @Test
+    fun testGetUserProfileUnauthorized() = testApp {
+        val client = jsonClient()
+        val user = uniqueUser()
+        val id = client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(user)
+        }.body<Map<String, Int>>()["id"]!!
+        client.get("/users/$id").apply {
             assertEquals(HttpStatusCode.Unauthorized, status)
         }
     }
 
     @Test
-    fun testSessionIncrement() = testApp {
-        client.get("/session/increment").apply {
-            assertEquals(HttpStatusCode.OK, status)
-            assertTrue(bodyAsText().contains("Counter is"))
+    fun testGetUserProfileForbidden() = testApp {
+        val client = jsonClient()
+        val user = uniqueUser()
+        client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(user)
+        }
+        client.post("/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(UserLoginRequest(user.username, user.password))
+        }
+        client.get("/users/99999").apply {
+            assertEquals(HttpStatusCode.Forbidden, status)
         }
     }
 
     @Test
-    fun testSessionIncrementCounterStartsAtZero() = testApp {
-        client.get("/session/increment").apply {
+    fun testUpdateUser() = testApp {
+        val client = jsonClient()
+        val user = uniqueUser()
+        val id = client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(user)
+        }.body<Map<String, Int>>()["id"]!!
+        client.post("/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(UserLoginRequest(user.username, user.password))
+        }
+        client.put("/users/$id") {
+            contentType(ContentType.Application.Json)
+            setBody(UserUpdate(email = "updated@example.com"))
+        }.apply {
             assertEquals(HttpStatusCode.OK, status)
-            assertTrue(bodyAsText().contains("Counter is 0"))
+        }
+    }
+
+    @Test
+    fun testDeleteUser() = testApp {
+        val client = jsonClient()
+        val user = uniqueUser()
+        val id = client.post("/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(user)
+        }.body<Map<String, Int>>()["id"]!!
+        client.post("/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(UserLoginRequest(user.username, user.password))
+        }
+        client.delete("/users/$id").apply {
+            assertEquals(HttpStatusCode.NoContent, status)
         }
     }
 }
