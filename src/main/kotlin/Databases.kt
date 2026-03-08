@@ -1,5 +1,7 @@
 package at.ac.hcw.se
 
+import at.ac.hcw.se.database.DatabaseSessionStorage
+import at.ac.hcw.se.database.SessionTable
 import at.ac.hcw.se.database.UserService
 import at.ac.hcw.se.database.UserTable
 import io.ktor.server.application.*
@@ -8,14 +10,15 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
-fun Application.configureDatabases(): UserService {
+fun Application.configureDatabases(): Pair<UserService, DatabaseSessionStorage> {
     val database = connectToDatabase(embedded = true)
     transaction(database) {
-        SchemaUtils.create(UserTable)
+        SchemaUtils.create(UserTable, SessionTable)
     }
-    val userService = UserService(database)
+    val sessionStorage = DatabaseSessionStorage(database)
+    val userService = UserService(database, sessionStorage)
     runBlocking { userService.ensureAdminExists() }
-    return userService
+    return userService to sessionStorage
 }
 
 /**

@@ -19,6 +19,10 @@ data class UserRegistration(
 @Serializable
 data class UserLoginRequest(val username: String, val password: String)
 
+/** Returned after a successful login. */
+@Serializable
+data class LoginResponse(val userId: Int, val isAdmin: Boolean)
+
 /** Sent by the client when updating an existing account (all fields optional). */
 @Serializable
 data class UserUpdate(

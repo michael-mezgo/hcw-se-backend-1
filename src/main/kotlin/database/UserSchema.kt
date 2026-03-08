@@ -6,7 +6,6 @@ import at.ac.hcw.se.dto.UserRegistration
 import at.ac.hcw.se.dto.UserResponse
 import at.ac.hcw.se.dto.UserUpdate
 import kotlinx.coroutines.Dispatchers
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.exposed.dao.IntEntity
 import org.jetbrains.exposed.dao.IntEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -63,11 +62,7 @@ data class UserCredentials(val id: Int, val username: String, val isAdmin: Boole
 
 // ── Service ──────────────────────────────────────────────────────────────────
 
-class UserService(private val database: Database) {
-
-    private val invalidatedUserIds: MutableSet<Int> = ConcurrentHashMap.newKeySet()
-
-    fun isSessionValid(userId: Int): Boolean = userId !in invalidatedUserIds
+class UserService(private val database: Database, private val sessionStorage: DatabaseSessionStorage) {
 
     private fun hashPassword(password: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -146,11 +141,12 @@ class UserService(private val database: Database) {
             }
         }
 
-    suspend fun delete(id: Int) =
+    suspend fun delete(id: Int) {
+        sessionStorage.invalidateForUser(id)
         newSuspendedTransaction(Dispatchers.IO, database) {
             UserEntity.findById(id)?.delete()
-            invalidatedUserIds.add(id)
         }
+    }
 
     suspend fun ensureAdminExists() =
         newSuspendedTransaction(Dispatchers.IO, database) {

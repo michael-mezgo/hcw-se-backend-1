@@ -1,6 +1,7 @@
 package at.ac.hcw.se.routes
 
 import at.ac.hcw.se.database.UserService
+import at.ac.hcw.se.dto.LoginResponse
 import at.ac.hcw.se.dto.UserLoginRequest
 import at.ac.hcw.se.dto.UserRegistration
 import at.ac.hcw.se.dto.UserResponse
@@ -48,7 +49,7 @@ fun Application.configureUserRoutes(userService: UserService) {
                 summary = "Login with username and password"
                 request { body<UserLoginRequest> { description = "Login credentials" } }
                 response {
-                    HttpStatusCode.OK to { description = "Login successful, session cookie set"; body<Map<String, Int>>() }
+                    HttpStatusCode.OK to { description = "Login successful, session cookie set"; body<LoginResponse>() }
                     HttpStatusCode.Unauthorized to { description = "Invalid credentials" }
                 }
             }) {
@@ -59,7 +60,7 @@ fun Application.configureUserRoutes(userService: UserService) {
                     return@post
                 }
                 call.sessions.set(UserSession(userId = user.id, username = user.username, isAdmin = user.isAdmin))
-                call.respond(HttpStatusCode.OK, mapOf("userId" to user.id))
+                call.respond(HttpStatusCode.OK, LoginResponse(userId = user.id, isAdmin = user.isAdmin))
             }
 
             post("/logout", {
