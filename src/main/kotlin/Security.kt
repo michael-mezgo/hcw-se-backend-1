@@ -1,48 +1,35 @@
 package at.ac.hcw.se
 
+import at.ac.hcw.se.database.UserService
 import at.ac.hcw.se.dto.UserSession
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.routing.*
+import io.ktor.server.response.*
 import io.ktor.server.sessions.*
-import kotlinx.serialization.Serializable
 
-fun Application.configureSecurity() {
-    authentication {
-        basic(name = "myauth1") {
-            realm = "Ktor Server"
-            validate { credentials ->
-                if (credentials.name == credentials.password) {
-                    UserIdPrincipal(credentials.name)
-                } else {
-                    null
-                }
-            }
-        }
-
-        form(name = "myauth2") {
-            userParamName = "user"
-            passwordParamName = "password"
-            challenge {
-                /**/
-            }
-        }
-    }
+fun Application.configureSecurity(userService: UserService) {
     install(Sessions) {
-        cookie<MySession>("MY_SESSION") {
-            cookie.extensions["SameSite"] = "lax"
-        }
         cookie<UserSession>("USER_SESSION") {
             cookie.extensions["SameSite"] = "lax"
         }
     }
-    routing {
-        authenticate("myauth1") {
+    install(Authentication) {
+        session<UserSession>("user-session") {
+            validate { session ->
+                if (userService.isSessionValid(session.userId)) session else null
+            }
+            challenge {
+                call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Authentication required"))
+            }
         }
-        authenticate("myauth2") {
+        session<UserSession>("admin-session") {
+            validate { session ->
+                if (userService.isSessionValid(session.userId) && session.isAdmin) session else null
+            }
+            challenge {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Admin privileges required"))
+            }
         }
     }
 }
-
-@Serializable
-data class MySession(val count: Int = 0)

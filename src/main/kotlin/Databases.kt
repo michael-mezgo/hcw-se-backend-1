@@ -2,19 +2,20 @@ package at.ac.hcw.se
 
 import at.ac.hcw.se.database.UserService
 import at.ac.hcw.se.database.UserTable
-import at.ac.hcw.se.routes.configureUserRoutes
 import io.ktor.server.application.*
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
-fun Application.configureDatabases() {
+fun Application.configureDatabases(): UserService {
     val database = connectToDatabase(embedded = true)
     transaction(database) {
         SchemaUtils.create(UserTable)
     }
     val userService = UserService(database)
-    configureUserRoutes(userService)
+    runBlocking { userService.ensureAdminExists() }
+    return userService
 }
 
 /**

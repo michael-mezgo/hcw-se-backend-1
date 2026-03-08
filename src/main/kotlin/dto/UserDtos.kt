@@ -41,8 +41,36 @@ data class UserResponse(
     val lastName: String,
     val licenseNumber: String,
     val licenseValidUntil: String,
+    val isAdmin: Boolean = false,
+    val isLocked: Boolean = false,
 )
 
 /** Stored in the session cookie after a successful login. */
 @Serializable
-data class UserSession(val userId: Int, val username: String)
+data class UserSession(val userId: Int, val username: String, val isAdmin: Boolean = false)
+
+/** Sent by an admin when creating a new user account (optionally with admin privileges). */
+@Serializable
+data class AdminUserCreate(
+    val username: String,
+    val email: String,
+    val password: String,
+    val firstName: String,
+    val lastName: String,
+    val licenseNumber: String,
+    val licenseValidUntil: String,
+    val isAdmin: Boolean = false,
+)
+
+/** Sent by an admin when updating any user account (all fields optional). */
+@Serializable
+data class AdminUserUpdate(
+    val email: String? = null,
+    val password: String? = null,
+    val firstName: String? = null,
+    val lastName: String? = null,
+    val licenseNumber: String? = null,
+    val licenseValidUntil: String? = null,
+    val isAdmin: Boolean? = null,
+    val isLocked: Boolean? = null,
+)

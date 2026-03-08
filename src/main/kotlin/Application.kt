@@ -1,5 +1,7 @@
 package at.ac.hcw.se
 
+import at.ac.hcw.se.routes.configureAdminRoutes
+import at.ac.hcw.se.routes.configureUserRoutes
 import io.ktor.server.application.*
 
 fun main(args: Array<String>) {
@@ -8,9 +10,11 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     configureHTTP()
-    configureSecurity()
     configureSerialization()
     configureMonitoring()
-    configureDatabases()
+    val userService = configureDatabases()
+    configureSecurity(userService)
+    configureUserRoutes(userService)
+    configureAdminRoutes(userService)
     configureRouting()
 }

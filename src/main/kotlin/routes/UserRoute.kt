@@ -12,6 +12,7 @@ import io.github.smiley4.ktorswaggerui.dsl.routing.post
 import io.github.smiley4.ktorswaggerui.dsl.routing.put
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -57,7 +58,7 @@ fun Application.configureUserRoutes(userService: UserService) {
                     call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid username or password"))
                     return@post
                 }
-                call.sessions.set(UserSession(userId = user.id, username = user.username))
+                call.sessions.set(UserSession(userId = user.id, username = user.username, isAdmin = user.isAdmin))
                 call.respond(HttpStatusCode.OK, mapOf("userId" to user.id))
             }
 
@@ -73,89 +74,85 @@ fun Application.configureUserRoutes(userService: UserService) {
 
         // ── User management ─────────────────────────────────────────────────────
 
-        route("/users") {
+        authenticate("user-session") {
+            route("/users") {
 
-            get("/{id}", {
-                tags("Users")
-                summary = "Get user profile"
-                description = "Returns the profile of the authenticated user. Users can only access their own profile."
-                request { pathParameter<Int>("id") { description = "User ID" } }
-                response {
-                    HttpStatusCode.OK to { description = "User profile"; body<UserResponse>() }
-                    HttpStatusCode.Unauthorized to { description = "Not authenticated" }
-                    HttpStatusCode.Forbidden to { description = "Access to another user's profile denied" }
-                    HttpStatusCode.NotFound to { description = "User not found" }
-                }
-            }) {
-                val session = call.sessions.get<UserSession>()
-                    ?: return@get call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Authentication required"))
+                get("/{id}", {
+                    tags("Users")
+                    summary = "Get user profile"
+                    description = "Returns the profile of the authenticated user. Users can only access their own profile."
+                    request { pathParameter<Int>("id") { description = "User ID" } }
+                    response {
+                        HttpStatusCode.OK to { description = "User profile"; body<UserResponse>() }
+                        HttpStatusCode.Unauthorized to { description = "Not authenticated" }
+                        HttpStatusCode.Forbidden to { description = "Access to another user's profile denied" }
+                        HttpStatusCode.NotFound to { description = "User not found" }
+                    }
+                }) {
+                    val session = call.principal<UserSession>()!!
 
-                val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
+                    val id = call.parameters["id"]?.toIntOrNull()
+                        ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
 
-                if (session.userId != id) {
-                    return@get call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
-                }
+                    if (session.userId != id)
+                        return@get call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
 
-                val user = userService.read(id)
-                    ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
+                    val user = userService.read(id)
+                        ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
 
-                call.respond(HttpStatusCode.OK, user)
-            }
-
-            put("/{id}", {
-                tags("Users")
-                summary = "Update user profile"
-                description = "Updates email, password, or other profile fields. All fields are optional."
-                request {
-                    pathParameter<Int>("id") { description = "User ID" }
-                    body<UserUpdate> { description = "Fields to update (all optional)" }
-                }
-                response {
-                    HttpStatusCode.OK to { description = "User updated successfully" }
-                    HttpStatusCode.Unauthorized to { description = "Not authenticated" }
-                    HttpStatusCode.Forbidden to { description = "Access to another user's profile denied" }
-                }
-            }) {
-                val session = call.sessions.get<UserSession>()
-                    ?: return@put call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Authentication required"))
-
-                val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
-
-                if (session.userId != id) {
-                    return@put call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                    call.respond(HttpStatusCode.OK, user)
                 }
 
-                val update = call.receive<UserUpdate>()
-                userService.update(id, update)
-                call.respond(HttpStatusCode.OK, mapOf("message" to "User updated successfully"))
-            }
+                put("/{id}", {
+                    tags("Users")
+                    summary = "Update user profile"
+                    description = "Updates email, password, or other profile fields. All fields are optional."
+                    request {
+                        pathParameter<Int>("id") { description = "User ID" }
+                        body<UserUpdate> { description = "Fields to update (all optional)" }
+                    }
+                    response {
+                        HttpStatusCode.OK to { description = "User updated successfully" }
+                        HttpStatusCode.Unauthorized to { description = "Not authenticated" }
+                        HttpStatusCode.Forbidden to { description = "Access to another user's profile denied" }
+                    }
+                }) {
+                    val session = call.principal<UserSession>()!!
 
-            delete("/{id}", {
-                tags("Users")
-                summary = "Delete user account"
-                description = "Deletes the user account and invalidates the current session."
-                request { pathParameter<Int>("id") { description = "User ID" } }
-                response {
-                    HttpStatusCode.NoContent to { description = "Account deleted, session cleared" }
-                    HttpStatusCode.Unauthorized to { description = "Not authenticated" }
-                    HttpStatusCode.Forbidden to { description = "Access to another user's account denied" }
+                    val id = call.parameters["id"]?.toIntOrNull()
+                        ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
+
+                    if (session.userId != id)
+                        return@put call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+
+                    val update = call.receive<UserUpdate>()
+                    userService.update(id, update)
+                    call.respond(HttpStatusCode.OK, mapOf("message" to "User updated successfully"))
                 }
-            }) {
-                val session = call.sessions.get<UserSession>()
-                    ?: return@delete call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Authentication required"))
 
-                val id = call.parameters["id"]?.toIntOrNull()
-                    ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
+                delete("/{id}", {
+                    tags("Users")
+                    summary = "Delete user account"
+                    description = "Deletes the user account and invalidates the current session."
+                    request { pathParameter<Int>("id") { description = "User ID" } }
+                    response {
+                        HttpStatusCode.NoContent to { description = "Account deleted, session cleared" }
+                        HttpStatusCode.Unauthorized to { description = "Not authenticated" }
+                        HttpStatusCode.Forbidden to { description = "Access to another user's account denied" }
+                    }
+                }) {
+                    val session = call.principal<UserSession>()!!
 
-                if (session.userId != id) {
-                    return@delete call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+                    val id = call.parameters["id"]?.toIntOrNull()
+                        ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
+
+                    if (session.userId != id)
+                        return@delete call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
+
+                    userService.delete(id)
+                    call.sessions.clear<UserSession>()
+                    call.respond(HttpStatusCode.NoContent)
                 }
-
-                userService.delete(id)
-                call.sessions.clear<UserSession>()
-                call.respond(HttpStatusCode.NoContent)
             }
         }
     }
