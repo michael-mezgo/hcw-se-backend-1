@@ -15,6 +15,7 @@ import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 
 fun Application.configureAdminRoutes(userService: UserService) {
     routing {
@@ -47,8 +48,12 @@ fun Application.configureAdminRoutes(userService: UserService) {
                     }
                 }) {
                     val dto = call.receive<AdminUserCreate>()
-                    val id = userService.adminCreate(dto)
-                    call.respond(HttpStatusCode.Created, mapOf("id" to id))
+                    try {
+                        val id = userService.adminCreate(dto)
+                        call.respond(HttpStatusCode.Created, mapOf("id" to id))
+                    } catch (e: ExposedSQLException) {
+                        call.respond(HttpStatusCode.Conflict, mapOf("error" to "Username or email already taken"))
+                    }
                 }
 
                 get("/{id}", {

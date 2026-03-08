@@ -18,6 +18,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 
 // Note: auth routes (register/login/logout) are kept in the same file as user management
 // routes because they are tightly coupled to the User domain. Extract to AuthRoute.kt if
@@ -40,8 +41,12 @@ fun Application.configureUserRoutes(userService: UserService) {
                 }
             }) {
                 val registration = call.receive<UserRegistration>()
-                val id = userService.create(registration)
-                call.respond(HttpStatusCode.Created, mapOf("id" to id))
+                try {
+                    val id = userService.create(registration)
+                    call.respond(HttpStatusCode.Created, mapOf("id" to id))
+                } catch (e: ExposedSQLException) {
+                    call.respond(HttpStatusCode.Conflict, mapOf("error" to "Username or email already taken"))
+                }
             }
 
             post("/login", {
