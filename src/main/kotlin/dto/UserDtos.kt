@@ -21,7 +21,7 @@ data class UserLoginRequest(val username: String, val password: String)
 
 /** Returned after a successful login. */
 @Serializable
-data class LoginResponse(val userId: Int, val isAdmin: Boolean)
+data class LoginResponse(val userId: Int, val isAdmin: Boolean, val token: String)
 
 /** Sent by the client when updating an existing account (all fields optional). */
 @Serializable
@@ -49,9 +49,9 @@ data class UserResponse(
     val isLocked: Boolean = false,
 )
 
-/** Stored in the session cookie after a successful login. */
+/** JWT claims of the authenticated user. */
 @Serializable
-data class UserSession(val userId: Int, val username: String, val isAdmin: Boolean = false)
+data class JwtPrincipal(val userId: Int, val username: String, val isAdmin: Boolean = false)
 
 /** Sent by an admin when creating a new user account (optionally with admin privileges). */
 @Serializable

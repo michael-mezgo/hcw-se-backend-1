@@ -4,11 +4,11 @@ import at.ac.hcw.se.database.UserService
 import at.ac.hcw.se.dto.AdminUserCreate
 import at.ac.hcw.se.dto.AdminUserUpdate
 import at.ac.hcw.se.dto.UserResponse
-import at.ac.hcw.se.dto.UserSession
+import at.ac.hcw.se.dto.JwtPrincipal
 import io.github.smiley4.ktorswaggerui.dsl.routing.delete
 import io.github.smiley4.ktorswaggerui.dsl.routing.get
+import io.github.smiley4.ktorswaggerui.dsl.routing.patch
 import io.github.smiley4.ktorswaggerui.dsl.routing.post
-import io.github.smiley4.ktorswaggerui.dsl.routing.put
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -19,8 +19,8 @@ import org.jetbrains.exposed.exceptions.ExposedSQLException
 
 fun Application.configureAdminRoutes(userService: UserService) {
     routing {
-        authenticate("admin-session") {
-            route("/admin/users") {
+        authenticate("admin-jwt") {
+            route("/users") {
 
                 get({
                     tags("Admin")
@@ -77,7 +77,7 @@ fun Application.configureAdminRoutes(userService: UserService) {
                     call.respond(HttpStatusCode.OK, user)
                 }
 
-                put("/{id}", {
+                patch("/{id}", {
                     tags("Admin")
                     summary = "Update any user"
                     description = "Updates profile fields, password, admin status, or lock status of any user. All fields are optional. Requires admin privileges."
@@ -93,7 +93,7 @@ fun Application.configureAdminRoutes(userService: UserService) {
                     }
                 }) {
                     val id = call.parameters["id"]?.toIntOrNull()
-                        ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
+                        ?: return@patch call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
 
                     val dto = call.receive<AdminUserUpdate>()
                     userService.adminUpdate(id, dto)
@@ -112,7 +112,7 @@ fun Application.configureAdminRoutes(userService: UserService) {
                         HttpStatusCode.NotFound to { description = "User not found" }
                     }
                 }) {
-                    val session = call.principal<UserSession>()!!
+                    val session = call.principal<JwtPrincipal>()!!
 
                     val id = call.parameters["id"]?.toIntOrNull()
                         ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))

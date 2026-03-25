@@ -62,7 +62,7 @@ data class UserCredentials(val id: Int, val username: String, val isAdmin: Boole
 
 // ── Service ──────────────────────────────────────────────────────────────────
 
-class UserService(private val database: Database, private val sessionStorage: DatabaseSessionStorage) {
+class UserService(private val database: Database) {
 
     private fun hashPassword(password: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -141,12 +141,10 @@ class UserService(private val database: Database, private val sessionStorage: Da
             }
         }
 
-    suspend fun delete(id: Int) {
-        sessionStorage.invalidateForUser(id)
+    suspend fun delete(id: Int) =
         newSuspendedTransaction(Dispatchers.IO, database) {
             UserEntity.findById(id)?.delete()
         }
-    }
 
     suspend fun ensureAdminExists() =
         newSuspendedTransaction(Dispatchers.IO, database) {

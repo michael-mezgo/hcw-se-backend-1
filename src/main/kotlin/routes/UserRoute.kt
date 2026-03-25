@@ -5,19 +5,19 @@ import at.ac.hcw.se.dto.LoginResponse
 import at.ac.hcw.se.dto.UserLoginRequest
 import at.ac.hcw.se.dto.UserRegistration
 import at.ac.hcw.se.dto.UserResponse
-import at.ac.hcw.se.dto.UserSession
+import at.ac.hcw.se.dto.JwtPrincipal
 import at.ac.hcw.se.dto.UserUpdate
+import at.ac.hcw.se.generateToken
 import io.github.smiley4.ktorswaggerui.dsl.routing.delete
 import io.github.smiley4.ktorswaggerui.dsl.routing.get
+import io.github.smiley4.ktorswaggerui.dsl.routing.patch
 import io.github.smiley4.ktorswaggerui.dsl.routing.post
-import io.github.smiley4.ktorswaggerui.dsl.routing.put
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.sessions.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 
 // Note: auth routes (register/login/logout) are kept in the same file as user management
@@ -54,7 +54,7 @@ fun Application.configureUserRoutes(userService: UserService) {
                 summary = "Login with username and password"
                 request { body<UserLoginRequest> { description = "Login credentials" } }
                 response {
-                    HttpStatusCode.OK to { description = "Login successful, session cookie set"; body<LoginResponse>() }
+                    HttpStatusCode.OK to { description = "Login successful, JWT token returned"; body<LoginResponse>() }
                     HttpStatusCode.Unauthorized to { description = "Invalid credentials" }
                 }
             }) {
@@ -64,99 +64,60 @@ fun Application.configureUserRoutes(userService: UserService) {
                     call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Invalid username or password"))
                     return@post
                 }
-                call.sessions.set(UserSession(userId = user.id, username = user.username, isAdmin = user.isAdmin))
-                call.respond(HttpStatusCode.OK, LoginResponse(userId = user.id, isAdmin = user.isAdmin))
+                val token = generateToken(user.id, user.username, user.isAdmin)
+                call.respond(HttpStatusCode.OK, LoginResponse(userId = user.id, isAdmin = user.isAdmin, token = token))
             }
 
-            post("/logout", {
-                tags("Auth")
-                summary = "Logout and clear session"
-                response { HttpStatusCode.NoContent to { description = "Logged out successfully" } }
-            }) {
-                call.sessions.clear<UserSession>()
-                call.respond(HttpStatusCode.NoContent)
-            }
         }
 
         // ── User management ─────────────────────────────────────────────────────
 
-        authenticate("user-session") {
-            route("/users") {
+        authenticate("user-jwt") {
+            route("/users/me") {
 
-                get("/{id}", {
+                get({
                     tags("Users")
-                    summary = "Get user profile"
-                    description = "Returns the profile of the authenticated user. Users can only access their own profile."
-                    request { pathParameter<Int>("id") { description = "User ID" } }
+                    summary = "Get own user profile"
+                    description = "Returns the profile of the authenticated user."
                     response {
                         HttpStatusCode.OK to { description = "User profile"; body<UserResponse>() }
                         HttpStatusCode.Unauthorized to { description = "Not authenticated" }
-                        HttpStatusCode.Forbidden to { description = "Access to another user's profile denied" }
                         HttpStatusCode.NotFound to { description = "User not found" }
                     }
                 }) {
-                    val session = call.principal<UserSession>()!!
-
-                    val id = call.parameters["id"]?.toIntOrNull()
-                        ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
-
-                    if (session.userId != id)
-                        return@get call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
-
-                    val user = userService.read(id)
+                    val principal = call.principal<JwtPrincipal>()!!
+                    val user = userService.read(principal.userId)
                         ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
-
                     call.respond(HttpStatusCode.OK, user)
                 }
 
-                put("/{id}", {
+                patch({
                     tags("Users")
-                    summary = "Update user profile"
+                    summary = "Update own user profile"
                     description = "Updates email, password, or other profile fields. All fields are optional."
-                    request {
-                        pathParameter<Int>("id") { description = "User ID" }
-                        body<UserUpdate> { description = "Fields to update (all optional)" }
-                    }
+                    request { body<UserUpdate> { description = "Fields to update (all optional)" } }
                     response {
                         HttpStatusCode.OK to { description = "User updated successfully" }
                         HttpStatusCode.Unauthorized to { description = "Not authenticated" }
-                        HttpStatusCode.Forbidden to { description = "Access to another user's profile denied" }
                     }
                 }) {
-                    val session = call.principal<UserSession>()!!
-
-                    val id = call.parameters["id"]?.toIntOrNull()
-                        ?: return@put call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
-
-                    if (session.userId != id)
-                        return@put call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
-
+                    val principal = call.principal<JwtPrincipal>()!!
                     val update = call.receive<UserUpdate>()
-                    userService.update(id, update)
+                    userService.update(principal.userId, update)
                     call.respond(HttpStatusCode.OK, mapOf("message" to "User updated successfully"))
                 }
 
-                delete("/{id}", {
+                delete({
                     tags("Users")
-                    summary = "Delete user account"
-                    description = "Deletes the user account and invalidates the current session."
-                    request { pathParameter<Int>("id") { description = "User ID" } }
+                    summary = "Delete own user account"
+                    description = "Deletes the authenticated user's account. Client should discard the JWT token."
                     response {
-                        HttpStatusCode.NoContent to { description = "Account deleted, session cleared" }
+                        HttpStatusCode.NoContent to { description = "Account deleted" }
                         HttpStatusCode.Unauthorized to { description = "Not authenticated" }
-                        HttpStatusCode.Forbidden to { description = "Access to another user's account denied" }
                     }
                 }) {
-                    val session = call.principal<UserSession>()!!
-
-                    val id = call.parameters["id"]?.toIntOrNull()
-                        ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
-
-                    if (session.userId != id)
-                        return@delete call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Access denied"))
-
-                    userService.delete(id)
-                    call.sessions.clear<UserSession>()
+                    val principal = call.principal<JwtPrincipal>()!!
+                    userService.delete(principal.userId)
                     call.respond(HttpStatusCode.NoContent)
                 }
             }

@@ -2,6 +2,7 @@ package at.ac.hcw.se
 
 import at.ac.hcw.se.dto.AdminUserCreate
 import at.ac.hcw.se.dto.AdminUserUpdate
+import at.ac.hcw.se.dto.LoginResponse
 import at.ac.hcw.se.dto.UserLoginRequest
 import at.ac.hcw.se.dto.UserResponse
 import io.ktor.client.call.*
@@ -15,7 +16,7 @@ class AdminTest : BaseTest() {
     @Test
     fun testAdminListUsers() = testApp {
         val client = loginAsAdmin()
-        client.get("/admin/users").apply {
+        client.get("/users").apply {
             assertEquals(HttpStatusCode.OK, status)
         }
     }
@@ -23,25 +24,25 @@ class AdminTest : BaseTest() {
     @Test
     fun testAdminListUsersUnauthenticated() = testApp {
         val client = jsonClient()
-        client.get("/admin/users").apply {
-            // admin-session challenge always returns 403 (no session = not admin)
+        client.get("/users").apply {
+            // admin-jwt challenge always returns 403 (no token = not admin)
             assertEquals(HttpStatusCode.Forbidden, status)
         }
     }
 
     @Test
     fun testAdminListUsersForbidden() = testApp {
-        val client = jsonClient()
+        val anonClient = jsonClient()
         val user = uniqueUser()
-        client.post("/auth/register") {
+        anonClient.post("/auth/register") {
             contentType(ContentType.Application.Json)
             setBody(user)
         }
-        client.post("/auth/login") {
+        val token = anonClient.post("/auth/login") {
             contentType(ContentType.Application.Json)
             setBody(UserLoginRequest(user.username, user.password))
-        }
-        client.get("/admin/users").apply {
+        }.body<LoginResponse>().token
+        jsonClient(token).get("/users").apply {
             assertEquals(HttpStatusCode.Forbidden, status)
         }
     }
@@ -50,7 +51,7 @@ class AdminTest : BaseTest() {
     fun testAdminCreateUser() = testApp {
         val client = loginAsAdmin()
         val id = UUID.randomUUID().toString().take(8)
-        client.post("/admin/users") {
+        client.post("/users") {
             contentType(ContentType.Application.Json)
             setBody(AdminUserCreate(
                 username = "admin_created_$id",
@@ -74,7 +75,7 @@ class AdminTest : BaseTest() {
             contentType(ContentType.Application.Json)
             setBody(user)
         }
-        client.post("/admin/users") {
+        client.post("/users") {
             contentType(ContentType.Application.Json)
             setBody(AdminUserCreate(
                 username = user.username,
@@ -98,7 +99,7 @@ class AdminTest : BaseTest() {
             contentType(ContentType.Application.Json)
             setBody(user)
         }.body<Map<String, Int>>()["id"]!!
-        client.get("/admin/users/$id").apply {
+        client.get("/users/$id").apply {
             assertEquals(HttpStatusCode.OK, status)
             assertEquals(user.username, body<UserResponse>().username)
         }
@@ -107,7 +108,7 @@ class AdminTest : BaseTest() {
     @Test
     fun testAdminGetUserNotFound() = testApp {
         val client = loginAsAdmin()
-        client.get("/admin/users/99999").apply {
+        client.get("/users/99999").apply {
             assertEquals(HttpStatusCode.NotFound, status)
         }
     }
@@ -120,13 +121,13 @@ class AdminTest : BaseTest() {
             contentType(ContentType.Application.Json)
             setBody(user)
         }.body<Map<String, Int>>()["id"]!!
-        client.put("/admin/users/$id") {
+        client.patch("/users/$id") {
             contentType(ContentType.Application.Json)
             setBody(AdminUserUpdate(email = "adminupdated@example.com", isAdmin = true))
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
         }
-        client.get("/admin/users/$id").apply {
+        client.get("/users/$id").apply {
             val response = body<UserResponse>()
             assertEquals("adminupdated@example.com", response.email)
             assertEquals(true, response.isAdmin)
@@ -141,10 +142,10 @@ class AdminTest : BaseTest() {
             contentType(ContentType.Application.Json)
             setBody(user)
         }.body<Map<String, Int>>()["id"]!!
-        client.delete("/admin/users/$id").apply {
+        client.delete("/users/$id").apply {
             assertEquals(HttpStatusCode.NoContent, status)
         }
-        client.get("/admin/users/$id").apply {
+        client.get("/users/$id").apply {
             assertEquals(HttpStatusCode.NotFound, status)
         }
     }
@@ -152,9 +153,9 @@ class AdminTest : BaseTest() {
     @Test
     fun testAdminDeleteSelfForbidden() = testApp {
         val client = loginAsAdmin()
-        val adminId = client.get("/admin/users").body<List<UserResponse>>()
+        val adminId = client.get("/users").body<List<UserResponse>>()
             .first { it.username == "Admin" }.id
-        client.delete("/admin/users/$adminId").apply {
+        client.delete("/users/$adminId").apply {
             assertEquals(HttpStatusCode.Forbidden, status)
         }
     }
