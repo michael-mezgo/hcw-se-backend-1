@@ -1,30 +1,32 @@
 package at.ac.hcw.se
 
-import io.ktor.http.*
+import io.github.smiley4.ktorswaggerui.SwaggerUI
+import io.github.smiley4.ktorswaggerui.routing.openApiSpec
+import io.github.smiley4.ktorswaggerui.routing.swaggerUI
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
-import io.ktor.server.response.*
+import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
-    routing {
-        get("/") {
-            call.respondText("Hello World!")
+    install(SwaggerUI) {
+        info {
+            title = "Car Rental Service API"
+            version = "0.0.1"
+            description = "REST API for the Car Rental Service"
         }
-        get("/convert") {
-            val fromCurrency = call.parameters["from"] ?: return@get call.respondText(
-                "Missing 'from' parameter", status = HttpStatusCode.BadRequest
-            )
-            val toCurrency = call.parameters["to"] ?: return@get call.respondText(
-                "Missing 'to' parameter", status = HttpStatusCode.BadRequest
-            )
-            val amount = call.parameters["amount"]?.toDoubleOrNull() ?: return@get call.respondText(
-                "Missing or invalid 'amount' parameter", status = HttpStatusCode.BadRequest
-            )
-            val apiKey = call.parameters["apiKey"] ?: return@get call.respondText(
-                "Missing 'apiKey' parameter", status = HttpStatusCode.BadRequest
-            )
-            val result = CurrencyService.convert(fromCurrency, toCurrency, amount, apiKey)
-            call.respond(mapOf("from" to fromCurrency, "to" to toCurrency, "amount" to amount, "result" to result))
+    }
+    routing {
+        route("/openapi.json") {
+            openApiSpec()
+        }
+        route("/swagger") {
+            swaggerUI("/openapi.json")
+        }
+        route("/") {
+            get {
+                return@get call.respond(HttpStatusCode.OK, "Service OK!")
+            }
         }
     }
 }
