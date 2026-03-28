@@ -151,6 +151,52 @@ class AdminTest : BaseTest() {
     }
 
     @Test
+    fun testAdminGetUserBadRequest() = testApp {
+        val client = loginAsAdmin()
+        client.get("/users/abc").apply {
+            assertEquals(HttpStatusCode.BadRequest, status)
+        }
+    }
+
+    @Test
+    fun testAdminUpdateUserNotFound() = testApp {
+        val client = loginAsAdmin()
+        client.patch("/users/99999") {
+            contentType(ContentType.Application.Json)
+            setBody(AdminUserUpdate(email = "nope@example.com"))
+        }.apply {
+            assertEquals(HttpStatusCode.NotFound, status)
+        }
+    }
+
+    @Test
+    fun testAdminUpdateUserBadRequest() = testApp {
+        val client = loginAsAdmin()
+        client.patch("/users/abc") {
+            contentType(ContentType.Application.Json)
+            setBody(AdminUserUpdate(email = "nope@example.com"))
+        }.apply {
+            assertEquals(HttpStatusCode.BadRequest, status)
+        }
+    }
+
+    @Test
+    fun testAdminDeleteUserNotFound() = testApp {
+        val client = loginAsAdmin()
+        client.delete("/users/99999").apply {
+            assertEquals(HttpStatusCode.NotFound, status)
+        }
+    }
+
+    @Test
+    fun testAdminDeleteUserBadRequest() = testApp {
+        val client = loginAsAdmin()
+        client.delete("/users/abc").apply {
+            assertEquals(HttpStatusCode.BadRequest, status)
+        }
+    }
+
+    @Test
     fun testAdminDeleteSelfForbidden() = testApp {
         val client = loginAsAdmin()
         val adminId = client.get("/users").body<List<UserResponse>>()

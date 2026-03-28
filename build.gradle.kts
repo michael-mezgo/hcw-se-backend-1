@@ -8,9 +8,10 @@ val postgres_version: String by project
 val swagger_ui_version: String by project
 
 plugins {
-    kotlin("jvm") version "2.3.20"
+    kotlin("jvm") version "2.3.10"
     id("io.ktor.plugin") version "3.4.1"
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.20"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.3.10"
+    id("com.github.bjornvester.wsdl2java") version "2.0.2"
     jacoco
 }
 
@@ -39,6 +40,16 @@ tasks.jacocoTestReport {
         xml.required = true
         html.required = true
     }
+    classDirectories.setFrom(
+        files(classDirectories.files.map {
+            fileTree(it) {
+                exclude(
+                    "org/tempuri/**",
+                    "com/microsoft/**",
+                )
+            }
+        })
+    )
 }
 
 tasks.jacocoTestCoverageVerification {
@@ -49,10 +60,24 @@ tasks.jacocoTestCoverageVerification {
             }
         }
     }
+    classDirectories.setFrom(
+        files(classDirectories.files.map {
+            fileTree(it) {
+                exclude(
+                    "org/tempuri/**",
+                    "com/microsoft/**",
+                )
+            }
+        })
+    )
 }
 
 tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
+}
+
+wsdl2java {
+    wsdlDir.set(layout.projectDirectory.dir("src/main/resources/wsdl"))
 }
 
 dependencies {
@@ -77,6 +102,8 @@ dependencies {
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-config-yaml")
+    implementation("jakarta.xml.ws:jakarta.xml.ws-api:4.0.2")
+    runtimeOnly("com.sun.xml.ws:jaxws-rt:4.0.3")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("io.ktor:ktor-client-content-negotiation")
     testImplementation("io.ktor:ktor-client-core")
