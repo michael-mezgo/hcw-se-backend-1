@@ -3,7 +3,9 @@ package at.ac.hcw.se
 import io.github.smiley4.ktorswaggerui.SwaggerUI
 import io.github.smiley4.ktorswaggerui.routing.openApiSpec
 import io.github.smiley4.ktorswaggerui.routing.swaggerUI
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
+import io.ktor.server.response.respond
 import io.ktor.server.routing.*
 
 fun Application.configureRouting() {
@@ -20,6 +22,11 @@ fun Application.configureRouting() {
         }
         route("/swagger") {
             swaggerUI("/openapi.json")
+        }
+        route("/") {
+            get {
+                return@get call.respond(HttpStatusCode.OK, "Service OK!")
+            }
         }
     }
 }
