@@ -1,6 +1,7 @@
 package at.ac.hcw.se
 
 import at.ac.hcw.se.routes.configureAdminRoutes
+import at.ac.hcw.se.routes.configureCurrencyRoutes
 import at.ac.hcw.se.routes.configureUserRoutes
 import io.ktor.server.application.*
 
@@ -16,5 +17,6 @@ fun Application.module() {
     configureSecurity()
     configureUserRoutes(userService)
     configureAdminRoutes(userService)
+    configureCurrencyRoutes()
     configureRouting()
 }
