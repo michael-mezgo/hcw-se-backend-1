@@ -7,6 +7,7 @@ plugins {
     kotlin("jvm") version "2.3.20"
     id("io.ktor.plugin") version "3.4.1"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.20"
+    id("com.github.bjornvester.wsdl2java") version "2.0.2"
     jacoco
 }
 
@@ -51,6 +52,10 @@ tasks.check {
     dependsOn(tasks.jacocoTestCoverageVerification)
 }
 
+wsdl2java {
+    wsdlDir.set(layout.projectDirectory.dir("src/main/resources/wsdl"))
+}
+
 dependencies {
     implementation("io.ktor:ktor-server-compression")
     implementation("io.ktor:ktor-server-cors")
@@ -68,6 +73,8 @@ dependencies {
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-config-yaml")
+    implementation("jakarta.xml.ws:jakarta.xml.ws-api:4.0.2")
+    runtimeOnly("com.sun.xml.ws:jaxws-rt:4.0.3")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("io.ktor:ktor-client-content-negotiation")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
