@@ -11,7 +11,7 @@ fun Application.configureCurrencyRoutes() {
     routing {
         //TODO: Delete file in production
 
-        /*route("/exchange-rate") {
+        route("/exchange-rate") {
             get( {
                 tags("ExchangeRate")
                 summary = "Currency Exchange"
@@ -25,6 +25,6 @@ fun Application.configureCurrencyRoutes() {
 
                 call.respond(HttpStatusCode.OK, result.toString())
             }
-        }*/
+        }
     }
 }

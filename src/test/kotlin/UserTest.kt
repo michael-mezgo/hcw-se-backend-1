@@ -75,4 +75,44 @@ class UserTest : BaseTest() {
             assertEquals(HttpStatusCode.Unauthorized, status)
         }
     }
+
+    @Test
+    fun testUpdateUserAllFields() = testApp {
+        val user = uniqueUser()
+        val client = jsonClient(loginUser(user))
+        client.patch("/users/me") {
+            contentType(ContentType.Application.Json)
+            setBody(UserUpdate(
+                email = "newemail@example.com",
+                password = "newpassword123",
+                licenseNumber = "NEWLIC123",
+                licenseValidUntil = "2031-06-30",
+            ))
+        }.apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+        client.get("/users/me").apply {
+            val response = body<UserResponse>()
+            assertEquals("newemail@example.com", response.email)
+            assertEquals("NEWLIC123", response.licenseNumber)
+            assertEquals("2031-06-30", response.licenseValidUntil)
+        }
+    }
+
+    @Test
+    fun testRootEndpoint() = testApp {
+        jsonClient().get("/").apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+    }
+
+    @Test
+    fun testLoginNonExistentUser() = testApp {
+        jsonClient().post("/auth/login") {
+            contentType(ContentType.Application.Json)
+            setBody(UserLoginRequest("nonexistent", "password"))
+        }.apply {
+            assertEquals(HttpStatusCode.Unauthorized, status)
+        }
+    }
 }
