@@ -1,29 +1,32 @@
 package at.ac.hcw.se
 
-import io.ktor.http.*
-import io.ktor.openapi.*
-import io.ktor.serialization.kotlinx.json.*
+import io.github.smiley4.ktorswaggerui.SwaggerUI
+import io.github.smiley4.ktorswaggerui.routing.openApiSpec
+import io.github.smiley4.ktorswaggerui.routing.swaggerUI
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
-import io.ktor.server.auth.*
-import io.ktor.server.plugins.calllogging.*
-import io.ktor.server.plugins.compression.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.plugins.cors.routing.*
-import io.ktor.server.plugins.openapi.*
-import io.ktor.server.plugins.swagger.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
+import io.ktor.server.response.respond
 import io.ktor.server.routing.*
-import io.ktor.server.sessions.*
-import java.sql.Connection
-import java.sql.DriverManager
-import kotlinx.serialization.Serializable
-import org.slf4j.event.*
 
 fun Application.configureRouting() {
+    install(SwaggerUI) {
+        info {
+            title = "Car Rental Service API"
+            version = "0.0.1"
+            description = "REST API for the Car Rental Service"
+        }
+    }
     routing {
-        get("/") {
-            call.respondText("Hello World!")
+        route("/openapi.json") {
+            openApiSpec()
+        }
+        route("/swagger") {
+            swaggerUI("/openapi.json")
+        }
+        route("/") {
+            get {
+                return@get call.respond(HttpStatusCode.OK, "Service OK!")
+            }
         }
     }
 }

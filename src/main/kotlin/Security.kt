@@ -1,71 +1,61 @@
 package at.ac.hcw.se
 
+import at.ac.hcw.se.dto.JwtPrincipal
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
 import io.ktor.http.*
-import io.ktor.openapi.*
-import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
-import io.ktor.server.plugins.calllogging.*
-import io.ktor.server.plugins.compression.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.plugins.cors.routing.*
-import io.ktor.server.plugins.openapi.*
-import io.ktor.server.plugins.swagger.*
-import io.ktor.server.request.*
+import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
-import io.ktor.server.routing.*
-import io.ktor.server.sessions.*
-import java.sql.Connection
-import java.sql.DriverManager
-import kotlinx.serialization.Serializable
-import org.slf4j.event.*
+import java.util.*
+
+val JWT_SECRET: String = System.getenv("JWT_SECRET") ?: "car-rental-super-secret-key-change-me"
+const val JWT_ISSUER = "car-rental-service"
+const val JWT_AUDIENCE = "car-rental-users"
+private const val JWT_EXPIRY_MS = 86_400_000L // 24 hours
+
+fun generateToken(userId: Int, username: String, isAdmin: Boolean): String =
+    JWT.create()
+        .withIssuer(JWT_ISSUER)
+        .withAudience(JWT_AUDIENCE)
+        .withClaim("userId", userId)
+        .withClaim("username", username)
+        .withClaim("isAdmin", isAdmin)
+        .withExpiresAt(Date(System.currentTimeMillis() + JWT_EXPIRY_MS))
+        .sign(Algorithm.HMAC256(JWT_SECRET))
 
 fun Application.configureSecurity() {
-    authentication {
-        basic(name = "myauth1") {
-            realm = "Ktor Server"
-            validate { credentials ->
-                if (credentials.name == credentials.password) {
-                    UserIdPrincipal(credentials.name)
-                } else {
-                    null
-                }
-            }
-        }
+    val algorithm = Algorithm.HMAC256(JWT_SECRET)
+    val verifier = JWT.require(algorithm).withIssuer(JWT_ISSUER).withAudience(JWT_AUDIENCE).build()
 
-        form(name = "myauth2") {
-            userParamName = "user"
-            passwordParamName = "password"
-            challenge {
-                /**/
+    install(Authentication) {
+        jwt("user-jwt") {
+            realm = "Car Rental Service"
+            this.verifier(verifier)
+            validate { credential ->
+                val userId = credential.payload.getClaim("userId").asInt() ?: return@validate null
+                val username = credential.payload.getClaim("username").asString() ?: return@validate null
+                val isAdmin = credential.payload.getClaim("isAdmin").asBoolean() ?: false
+                JwtPrincipal(userId = userId, username = username, isAdmin = isAdmin)
+            }
+            challenge { _, _ ->
+                call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "Authentication required"))
             }
         }
-    }
-    install(Sessions) {
-        cookie<MySession>("MY_SESSION") {
-            cookie.extensions["SameSite"] = "lax"
-        }
-    }
-    routing {
-        authenticate("myauth1") {
-            get("/protected/route/basic") {
-                val principal = call.principal<UserIdPrincipal>()!!
-                call.respondText("Hello ${principal.name}")
+        jwt("admin-jwt") {
+            realm = "Car Rental Service Admin"
+            this.verifier(verifier)
+            validate { credential ->
+                val userId = credential.payload.getClaim("userId").asInt() ?: return@validate null
+                val username = credential.payload.getClaim("username").asString() ?: return@validate null
+                val isAdmin = credential.payload.getClaim("isAdmin").asBoolean() ?: false
+                if (!isAdmin) return@validate null
+                JwtPrincipal(userId = userId, username = username, isAdmin = true)
             }
-        }
-        authenticate("myauth2") {
-            get("/protected/route/form") {
-                val principal = call.principal<UserIdPrincipal>()!!
-                call.respondText("Hello ${principal.name}")
+            challenge { _, _ ->
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Admin privileges required"))
             }
-        }
-        get("/session/increment") {
-            val session = call.sessions.get<MySession>() ?: MySession()
-            call.sessions.set(session.copy(count = session.count + 1))
-            call.respondText("Counter is ${session.count}. Refresh to increment.")
         }
     }
 }
-
-@Serializable
-data class MySession(val count: Int = 0)
