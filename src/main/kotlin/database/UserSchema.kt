@@ -12,7 +12,7 @@ import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import java.security.MessageDigest
+import org.mindrot.jbcrypt.BCrypt
 
 // ── Table definition ─────────────────────────────────────────────────────────
 
@@ -64,10 +64,9 @@ data class UserCredentials(val id: Int, val username: String, val isAdmin: Boole
 
 class UserService(private val database: Database) {
 
-    private fun hashPassword(password: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        return digest.digest(password.toByteArray()).joinToString("") { "%02x".format(it) }
-    }
+    private fun hashPassword(password: String): String = BCrypt.hashpw(password, BCrypt.gensalt())
+
+    private fun checkPassword(password: String, hash: String): Boolean = BCrypt.checkpw(password, hash)
 
     suspend fun create(dto: UserRegistration): Int =
         newSuspendedTransaction(Dispatchers.IO, database) {
@@ -111,39 +110,41 @@ class UserService(private val database: Database) {
             UserEntity
                 .find { UserTable.username eq username }
                 .firstOrNull()
-                ?.takeIf { it.passwordHash == hashPassword(password) && !it.isLocked }
+                ?.takeIf { checkPassword(password, it.passwordHash) && !it.isLocked }
                 ?.let { UserCredentials(it.id.value, it.username, it.isAdmin) }
         }
 
-    suspend fun update(id: Int, dto: UserUpdate) =
+    suspend fun update(id: Int, dto: UserUpdate): Boolean =
         newSuspendedTransaction(Dispatchers.IO, database) {
-            UserEntity.findByIdAndUpdate(id) { entity ->
-                dto.email?.let             { entity.email             = it }
-                dto.password?.let          { entity.passwordHash      = hashPassword(it) }
-                dto.firstName?.let         { entity.firstName         = it }
-                dto.lastName?.let          { entity.lastName          = it }
-                dto.licenseNumber?.let     { entity.licenseNumber     = it }
-                dto.licenseValidUntil?.let { entity.licenseValidUntil = it }
-            }
+            val entity = UserEntity.findById(id) ?: return@newSuspendedTransaction false
+            dto.email?.let             { entity.email             = it }
+            dto.password?.let          { entity.passwordHash      = hashPassword(it) }
+            dto.firstName?.let         { entity.firstName         = it }
+            dto.lastName?.let          { entity.lastName          = it }
+            dto.licenseNumber?.let     { entity.licenseNumber     = it }
+            dto.licenseValidUntil?.let { entity.licenseValidUntil = it }
+            true
         }
 
-    suspend fun adminUpdate(id: Int, dto: AdminUserUpdate) =
+    suspend fun adminUpdate(id: Int, dto: AdminUserUpdate): Boolean =
         newSuspendedTransaction(Dispatchers.IO, database) {
-            UserEntity.findByIdAndUpdate(id) { entity ->
-                dto.email?.let             { entity.email             = it }
-                dto.password?.let          { entity.passwordHash      = hashPassword(it) }
-                dto.firstName?.let         { entity.firstName         = it }
-                dto.lastName?.let          { entity.lastName          = it }
-                dto.licenseNumber?.let     { entity.licenseNumber     = it }
-                dto.licenseValidUntil?.let { entity.licenseValidUntil = it }
-                dto.isAdmin?.let           { entity.isAdmin           = it }
-                dto.isLocked?.let          { entity.isLocked          = it }
-            }
+            val entity = UserEntity.findById(id) ?: return@newSuspendedTransaction false
+            dto.email?.let             { entity.email             = it }
+            dto.password?.let          { entity.passwordHash      = hashPassword(it) }
+            dto.firstName?.let         { entity.firstName         = it }
+            dto.lastName?.let          { entity.lastName          = it }
+            dto.licenseNumber?.let     { entity.licenseNumber     = it }
+            dto.licenseValidUntil?.let { entity.licenseValidUntil = it }
+            dto.isAdmin?.let           { entity.isAdmin           = it }
+            dto.isLocked?.let          { entity.isLocked          = it }
+            true
         }
 
-    suspend fun delete(id: Int) =
+    suspend fun delete(id: Int): Boolean =
         newSuspendedTransaction(Dispatchers.IO, database) {
-            UserEntity.findById(id)?.delete()
+            val entity = UserEntity.findById(id) ?: return@newSuspendedTransaction false
+            entity.delete()
+            true
         }
 
     suspend fun ensureAdminExists() =

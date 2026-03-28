@@ -10,7 +10,7 @@ import io.ktor.server.auth.jwt.*
 import io.ktor.server.response.*
 import java.util.*
 
-const val JWT_SECRET = "car-rental-super-secret-key-change-me"
+val JWT_SECRET: String = System.getenv("JWT_SECRET") ?: "car-rental-super-secret-key-change-me"
 const val JWT_ISSUER = "car-rental-service"
 const val JWT_AUDIENCE = "car-rental-users"
 private const val JWT_EXPIRY_MS = 86_400_000L // 24 hours

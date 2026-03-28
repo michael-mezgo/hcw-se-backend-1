@@ -13,10 +13,6 @@ fun Application.configureRouting() {
             version = "0.0.1"
             description = "REST API for the Car Rental Service"
         }
-        server {
-            url = "http://localhost:8080"
-            description = "Local development server"
-        }
     }
     routing {
         route("/openapi.json") {

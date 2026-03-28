@@ -7,9 +7,11 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.util.UUID
 
 fun Application.configureDatabases(): UserService {
-    val database = connectToDatabase(embedded = true)
+    val embedded = environment.config.propertyOrNull("embedded")?.getString()?.toBooleanStrictOrNull() ?: true
+    val database = connectToDatabase(embedded = embedded)
     transaction(database) {
         SchemaUtils.create(UserTable)
     }
@@ -28,7 +30,7 @@ fun Application.connectToDatabase(embedded: Boolean): Database {
     return if (embedded) {
         log.info("Using embedded H2 database; set embedded=false to use PostgreSQL")
         Database.connect(
-            url = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1",
+            url = "jdbc:h2:mem:${UUID.randomUUID()};DB_CLOSE_DELAY=-1",
             driver = "org.h2.Driver",
             user = "root",
             password = ""

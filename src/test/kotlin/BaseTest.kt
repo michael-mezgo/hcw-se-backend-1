@@ -26,6 +26,7 @@ abstract class BaseTest {
         }
         if (token != null) {
             client.requestPipeline.intercept(HttpRequestPipeline.Before) {
+                context.headers.remove(HttpHeaders.Authorization)
                 context.headers.append(HttpHeaders.Authorization, "Bearer $token")
             }
         }

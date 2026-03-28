@@ -99,11 +99,14 @@ fun Application.configureUserRoutes(userService: UserService) {
                     response {
                         HttpStatusCode.OK to { description = "User updated successfully" }
                         HttpStatusCode.Unauthorized to { description = "Not authenticated" }
+                        HttpStatusCode.NotFound to { description = "User not found" }
                     }
                 }) {
                     val principal = call.principal<JwtPrincipal>()!!
                     val update = call.receive<UserUpdate>()
-                    userService.update(principal.userId, update)
+                    val updated = userService.update(principal.userId, update)
+                    if (!updated)
+                        return@patch call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
                     call.respond(HttpStatusCode.OK, mapOf("message" to "User updated successfully"))
                 }
 
@@ -114,10 +117,13 @@ fun Application.configureUserRoutes(userService: UserService) {
                     response {
                         HttpStatusCode.NoContent to { description = "Account deleted" }
                         HttpStatusCode.Unauthorized to { description = "Not authenticated" }
+                        HttpStatusCode.NotFound to { description = "User not found" }
                     }
                 }) {
                     val principal = call.principal<JwtPrincipal>()!!
-                    userService.delete(principal.userId)
+                    val deleted = userService.delete(principal.userId)
+                    if (!deleted)
+                        return@delete call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
                     call.respond(HttpStatusCode.NoContent)
                 }
             }

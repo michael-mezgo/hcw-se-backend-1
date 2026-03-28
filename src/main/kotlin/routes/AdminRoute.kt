@@ -28,7 +28,6 @@ fun Application.configureAdminRoutes(userService: UserService) {
                     description = "Returns a list of all registered users. Requires admin privileges."
                     response {
                         HttpStatusCode.OK to { description = "List of all users"; body<List<UserResponse>>() }
-                        HttpStatusCode.Unauthorized to { description = "Not authenticated" }
                         HttpStatusCode.Forbidden to { description = "Admin privileges required" }
                     }
                 }) {
@@ -42,7 +41,6 @@ fun Application.configureAdminRoutes(userService: UserService) {
                     request { body<AdminUserCreate> { description = "User data" } }
                     response {
                         HttpStatusCode.Created to { description = "User created"; body<Map<String, Int>>() }
-                        HttpStatusCode.Unauthorized to { description = "Not authenticated" }
                         HttpStatusCode.Forbidden to { description = "Admin privileges required" }
                         HttpStatusCode.Conflict to { description = "Username or email already taken" }
                     }
@@ -63,7 +61,6 @@ fun Application.configureAdminRoutes(userService: UserService) {
                     request { pathParameter<Int>("id") { description = "User ID" } }
                     response {
                         HttpStatusCode.OK to { description = "User profile"; body<UserResponse>() }
-                        HttpStatusCode.Unauthorized to { description = "Not authenticated" }
                         HttpStatusCode.Forbidden to { description = "Admin privileges required" }
                         HttpStatusCode.NotFound to { description = "User not found" }
                     }
@@ -87,7 +84,6 @@ fun Application.configureAdminRoutes(userService: UserService) {
                     }
                     response {
                         HttpStatusCode.OK to { description = "User updated successfully" }
-                        HttpStatusCode.Unauthorized to { description = "Not authenticated" }
                         HttpStatusCode.Forbidden to { description = "Admin privileges required" }
                         HttpStatusCode.NotFound to { description = "User not found" }
                     }
@@ -96,7 +92,9 @@ fun Application.configureAdminRoutes(userService: UserService) {
                         ?: return@patch call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
 
                     val dto = call.receive<AdminUserUpdate>()
-                    userService.adminUpdate(id, dto)
+                    val updated = userService.adminUpdate(id, dto)
+                    if (!updated)
+                        return@patch call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
                     call.respond(HttpStatusCode.OK, mapOf("message" to "User updated successfully"))
                 }
 
@@ -107,7 +105,6 @@ fun Application.configureAdminRoutes(userService: UserService) {
                     request { pathParameter<Int>("id") { description = "User ID" } }
                     response {
                         HttpStatusCode.NoContent to { description = "User deleted" }
-                        HttpStatusCode.Unauthorized to { description = "Not authenticated" }
                         HttpStatusCode.Forbidden to { description = "Admin privileges required or self-deletion attempted" }
                         HttpStatusCode.NotFound to { description = "User not found" }
                     }
@@ -120,7 +117,9 @@ fun Application.configureAdminRoutes(userService: UserService) {
                     if (session.userId == id)
                         return@delete call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Admins cannot delete their own account"))
 
-                    userService.delete(id)
+                    val deleted = userService.delete(id)
+                    if (!deleted)
+                        return@delete call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
                     call.respond(HttpStatusCode.NoContent)
                 }
             }
