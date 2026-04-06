@@ -12,20 +12,28 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
+    val azureConnectionString = dotenv()["AZURE_STORAGE_CONNECTION_STRING"]
+
     configureHTTP()
     configureSerialization()
     configureMonitoring()
     val userService = configureDatabases()
     configureSecurity()
     val dotenv = dotenv { ignoreIfMissing = true }
-    val blobStorage = BlobStorageService(
-        connectionString = dotenv["AZURE_STORAGE_CONNECTION_STRING"]
-            ?: error("AZURE_STORAGE_CONNECTION_STRING not set in .env or environment"),
-        containerName = dotenv["AZURE_STORAGE_CONTAINER_NAME"] ?: "rental-documents",
-    )
+
+    if(azureConnectionString != null) {
+        val blobStorage = BlobStorageService(
+            connectionString = dotenv["AZURE_STORAGE_CONNECTION_STRING"]
+                ?: error("AZURE_STORAGE_CONNECTION_STRING not set in .env or environment"),
+            containerName = dotenv["AZURE_STORAGE_CONTAINER_NAME"] ?: "rental-documents",
+        )
+        configureBlobRoutes(blobStorage)
+    } else {
+        log.warn("AZURE_STORAGE_CONNECTION_STRING not found; blob storage routes will not be available")
+    }
+
     configureUserRoutes(userService)
     configureAdminRoutes(userService)
     configureCurrencyRoutes()
-    configureBlobRoutes(blobStorage)
     configureRouting()
 }
