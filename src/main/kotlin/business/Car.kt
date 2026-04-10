@@ -11,9 +11,9 @@ class Car(
     val pricePerDay: Double,
     val description: String,
     val imageUrl: String,
-    val transmission: String,
+    val transmission: String, //TODO: Use enums
     val power: Int,
-    val fuelType: String,
+    val fuelType: String, //TODO: Use enums
     val isAvailable: Boolean,
     val location: Coordinate,
 ) {
