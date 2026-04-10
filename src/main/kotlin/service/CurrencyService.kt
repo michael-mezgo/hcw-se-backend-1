@@ -1,4 +1,4 @@
-package at.ac.hcw.se
+package at.ac.hcw.se.service
 
 import org.tempuri.ICurrencyService_Service
 import java.net.URI

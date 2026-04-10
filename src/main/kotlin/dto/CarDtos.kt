@@ -3,6 +3,12 @@ package at.ac.hcw.se.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class CoordinateDto(
+    val latitude: Double,
+    val longitude: Double,
+)
+
+@Serializable
 data class CarCreateRequest(
     val manufacturer: String,
     val model: String,
@@ -13,6 +19,7 @@ data class CarCreateRequest(
     val transmission: String,
     val power: Int,
     val fuelType: String,
+    val location: CoordinateDto,
 )
 
 @Serializable
@@ -26,6 +33,7 @@ data class CarUpdate(
     val transmission: String? = null,
     val power: Int? = null,
     val fuelType: String? = null,
+    val location: CoordinateDto? = null,
 )
 
 @Serializable
@@ -40,5 +48,6 @@ data class CarResponse(
     val transmission: String,
     val power: Int,
     val fuelType: String,
-    val isAvailable: Boolean
+    val isAvailable: Boolean,
+    val location: CoordinateDto,
 )
