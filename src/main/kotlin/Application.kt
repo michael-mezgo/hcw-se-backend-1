@@ -13,6 +13,7 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     val azureConnectionString = dotenv()["AZURE_STORAGE_CONNECTION_STRING"]
+    print(CurrencyService.getSupportedCurrencies())
 
     configureHTTP()
     configureSerialization()
