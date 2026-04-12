@@ -1,6 +1,6 @@
 package at.ac.hcw.se.routes
 
-import at.ac.hcw.se.service.CurrencyService
+import at.ac.hcw.se.CurrencyService
 import io.github.smiley4.ktorswaggerui.dsl.routing.get
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -24,6 +24,12 @@ fun Application.configureCurrencyRoutes() {
                 val result = CurrencyService.convert("USD", "EUR", 1.0, "secret123") // Example conversion
 
                 call.respond(HttpStatusCode.OK, result.toString())
+            }
+        }
+        route("/currency-service") {
+            get({}){
+                val result = CurrencyService.getSupportedCurrencies()
+                call.respond(HttpStatusCode.OK, result)
             }
         }
     }
