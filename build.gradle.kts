@@ -110,4 +110,7 @@ dependencies {
     testImplementation("io.ktor:ktor-client-content-negotiation")
     testImplementation("io.ktor:ktor-client-core")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    // Source: https://mvnrepository.com/artifact/com.azure/azure-storage-blob
+    implementation("com.azure:azure-storage-blob:12.33.3")
+    implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
 }
