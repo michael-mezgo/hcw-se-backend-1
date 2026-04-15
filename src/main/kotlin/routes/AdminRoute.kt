@@ -1,23 +1,27 @@
 package at.ac.hcw.se.routes
 
-import at.ac.hcw.se.database.UserService
-import at.ac.hcw.se.dto.AdminUserCreate
-import at.ac.hcw.se.dto.AdminUserUpdate
-import at.ac.hcw.se.dto.UserResponse
-import at.ac.hcw.se.dto.JwtPrincipal
+import at.ac.hcw.se.BlobStorageService
+import at.ac.hcw.se.dto.*
+import at.ac.hcw.se.business.Admin
+import at.ac.hcw.se.service.ServiceException
+import at.ac.hcw.se.service.UserService
 import io.github.smiley4.ktorswaggerui.dsl.routing.delete
 import io.github.smiley4.ktorswaggerui.dsl.routing.get
 import io.github.smiley4.ktorswaggerui.dsl.routing.patch
 import io.github.smiley4.ktorswaggerui.dsl.routing.post
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.jetbrains.exposed.exceptions.ExposedSQLException
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
+import kotlinx.serialization.json.Json
+import java.util.UUID
 
-fun Application.configureAdminRoutes(userService: UserService) {
+fun Application.configureAdminRoutes(blobStorage: BlobStorageService? = null) {
     routing {
         authenticate("admin-jwt") {
             route("/users") {
@@ -31,7 +35,8 @@ fun Application.configureAdminRoutes(userService: UserService) {
                         HttpStatusCode.Forbidden to { description = "Admin privileges required" }
                     }
                 }) {
-                    call.respond(HttpStatusCode.OK, userService.listAll())
+                    val admin = call.toAdmin()
+                    call.respond(HttpStatusCode.OK, admin.listAllUsers().map { it.toResponse() })
                 }
 
                 post({
@@ -45,13 +50,10 @@ fun Application.configureAdminRoutes(userService: UserService) {
                         HttpStatusCode.Conflict to { description = "Username or email already taken" }
                     }
                 }) {
+                    val admin = call.toAdmin()
                     val dto = call.receive<AdminUserCreate>()
-                    try {
-                        val id = userService.adminCreate(dto)
-                        call.respond(HttpStatusCode.Created, mapOf("id" to id))
-                    } catch (e: ExposedSQLException) {
-                        call.respond(HttpStatusCode.Conflict, mapOf("error" to "Username or email already taken"))
-                    }
+                    val id = admin.createUser(dto)
+                    call.respond(HttpStatusCode.Created, mapOf("id" to id))
                 }
 
                 get("/{id}", {
@@ -65,13 +67,10 @@ fun Application.configureAdminRoutes(userService: UserService) {
                         HttpStatusCode.NotFound to { description = "User not found" }
                     }
                 }) {
+                    val admin = call.toAdmin()
                     val id = call.parameters["id"]?.toIntOrNull()
-                        ?: return@get call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
-
-                    val user = userService.read(id)
-                        ?: return@get call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
-
-                    call.respond(HttpStatusCode.OK, user)
+                        ?: throw ServiceException.BadRequest("Invalid user ID")
+                    call.respond(HttpStatusCode.OK, admin.getUser(id).toResponse())
                 }
 
                 patch("/{id}", {
@@ -88,13 +87,11 @@ fun Application.configureAdminRoutes(userService: UserService) {
                         HttpStatusCode.NotFound to { description = "User not found" }
                     }
                 }) {
+                    val admin = call.toAdmin()
                     val id = call.parameters["id"]?.toIntOrNull()
-                        ?: return@patch call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
-
+                        ?: throw ServiceException.BadRequest("Invalid user ID")
                     val dto = call.receive<AdminUserUpdate>()
-                    val updated = userService.adminUpdate(id, dto)
-                    if (!updated)
-                        return@patch call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
+                    admin.updateUser(id, dto)
                     call.respond(HttpStatusCode.OK, mapOf("message" to "User updated successfully"))
                 }
 
@@ -109,20 +106,101 @@ fun Application.configureAdminRoutes(userService: UserService) {
                         HttpStatusCode.NotFound to { description = "User not found" }
                     }
                 }) {
-                    val session = call.principal<JwtPrincipal>()!!
-
+                    val admin = call.toAdmin()
                     val id = call.parameters["id"]?.toIntOrNull()
-                        ?: return@delete call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid user ID"))
+                        ?: throw ServiceException.BadRequest("Invalid user ID")
+                    admin.deleteUser(id)
+                    call.respond(HttpStatusCode.NoContent)
+                }
+            }
 
-                    if (session.userId == id)
-                        return@delete call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Admins cannot delete their own account"))
+            // ── Admin car management ────────────────────────────────────────────
 
-                    val deleted = userService.delete(id)
-                    if (!deleted)
-                        return@delete call.respond(HttpStatusCode.NotFound, mapOf("error" to "User not found"))
+            route("/cars") {
+
+                post({
+                    tags("Admin - Cars")
+                    summary = "Create a car"
+                    description = "Adds a new car to the fleet. Accepts multipart/form-data with a 'data' part (JSON car fields) and an optional 'image' part (image file uploaded to Azure Blob Storage). Requires admin privileges."
+                    response {
+                        HttpStatusCode.Created to { description = "Car created"; body<Map<String, Int>>() }
+                        HttpStatusCode.Forbidden to { description = "Admin privileges required" }
+                        HttpStatusCode.BadRequest to { description = "Missing or invalid car data" }
+                    }
+                }) {
+                    val admin = call.toAdmin()
+                    var carData: CarCreateRequest? = null
+                    var imageUrl: String? = null
+
+                    call.receiveMultipart().forEachPart { part ->
+                        when {
+                            part is PartData.FormItem && part.name == "data" -> {
+                                carData = Json.decodeFromString(part.value)
+                            }
+                            part is PartData.FileItem && part.name == "image" && blobStorage != null -> {
+                                val bytes = part.provider().readRemaining().readByteArray()
+                                val ext = part.originalFileName?.substringAfterLast('.', "jpg") ?: "jpg"
+                                val blobName = "cars/${UUID.randomUUID()}.$ext"
+                                blobStorage.upload(blobName, bytes)
+                                imageUrl = blobName
+                            }
+                        }
+                        part.dispose()
+                    }
+
+                    val dto = carData ?: throw ServiceException.BadRequest("Missing 'data' form field with car JSON")
+                    val finalDto = if (imageUrl != null) dto.copy(imageUrl = imageUrl!!) else dto
+                    val id = admin.createCar(finalDto)
+                    call.respond(HttpStatusCode.Created, mapOf("id" to id))
+                }
+
+                patch("/{id}", {
+                    tags("Admin - Cars")
+                    summary = "Update a car"
+                    description = "Updates car details. All fields are optional. Requires admin privileges."
+                    request {
+                        pathParameter<Int>("id") { description = "Car ID" }
+                        body<CarUpdate> { description = "Fields to update (all optional)" }
+                    }
+                    response {
+                        HttpStatusCode.OK to { description = "Car updated successfully" }
+                        HttpStatusCode.Forbidden to { description = "Admin privileges required" }
+                        HttpStatusCode.NotFound to { description = "Car not found" }
+                    }
+                }) {
+                    val admin = call.toAdmin()
+                    val id = call.parameters["id"]?.toIntOrNull()
+                        ?: throw ServiceException.BadRequest("Invalid car ID")
+                    val dto = call.receive<CarUpdate>()
+                    admin.updateCar(id, dto)
+                    call.respond(HttpStatusCode.OK, mapOf("message" to "Car updated successfully"))
+                }
+
+                delete("/{id}", {
+                    tags("Admin - Cars")
+                    summary = "Delete a car"
+                    description = "Removes a car from the fleet. Requires admin privileges."
+                    request { pathParameter<Int>("id") { description = "Car ID" } }
+                    response {
+                        HttpStatusCode.NoContent to { description = "Car deleted" }
+                        HttpStatusCode.Forbidden to { description = "Admin privileges required" }
+                        HttpStatusCode.NotFound to { description = "Car not found" }
+                    }
+                }) {
+                    val admin = call.toAdmin()
+                    val id = call.parameters["id"]?.toIntOrNull()
+                        ?: throw ServiceException.BadRequest("Invalid car ID")
+                    admin.deleteCar(id)
                     call.respond(HttpStatusCode.NoContent)
                 }
             }
         }
     }
+}
+
+private suspend fun ApplicationCall.toAdmin(): Admin {
+    val principal = principal<JwtPrincipal>()!!
+    val user = UserService.read(principal.userId)
+        ?: throw ServiceException.NotFound("User not found")
+    return Admin(user)
 }

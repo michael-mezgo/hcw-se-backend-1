@@ -1,8 +1,11 @@
 package at.ac.hcw.se
 
 import at.ac.hcw.se.routes.configureAdminRoutes
+import at.ac.hcw.se.routes.configureCarRoutes
+import at.ac.hcw.se.routes.configureBlobRoutes
 import at.ac.hcw.se.routes.configureCurrencyRoutes
 import at.ac.hcw.se.routes.configureUserRoutes
+import io.github.cdimascio.dotenv.dotenv
 import io.ktor.server.application.*
 
 fun main(args: Array<String>) {
@@ -10,13 +13,28 @@ fun main(args: Array<String>) {
 }
 
 fun Application.module() {
+    val dotenv = dotenv { ignoreIfMissing = true }
+    val azureConnectionString = dotenv["AZURE_STORAGE_CONNECTION_STRING"]
+    val blobStorage = if (azureConnectionString != null) {
+        BlobStorageService(
+            connectionString = azureConnectionString,
+            containerName = dotenv["AZURE_STORAGE_CONTAINER_NAME"] ?: "rental-documents",
+        )
+    } else {
+        log.warn("AZURE_STORAGE_CONNECTION_STRING not found; blob storage routes will not be available")
+        null
+    }
+
     configureHTTP()
     configureSerialization()
     configureMonitoring()
-    val userService = configureDatabases()
+    configureStatusPages()
+    configureDatabases(blobStorage)
     configureSecurity()
-    configureUserRoutes(userService)
-    configureAdminRoutes(userService)
+    configureUserRoutes()
+    configureAdminRoutes(blobStorage)
+    configureCarRoutes()
+    blobStorage?.let { configureBlobRoutes(it) }
     configureCurrencyRoutes()
     configureRouting()
 }

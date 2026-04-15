@@ -93,6 +93,7 @@ dependencies {
     implementation("org.mindrot:jbcrypt:$jbcrypt_version")
     implementation("io.ktor:ktor-server-content-negotiation")
     implementation("io.ktor:ktor-serialization-kotlinx-json")
+    implementation("io.ktor:ktor-server-status-pages")
     implementation("io.ktor:ktor-server-call-logging")
     implementation("org.postgresql:postgresql:$postgres_version")
     implementation("com.h2database:h2:$h2_version")
@@ -102,10 +103,14 @@ dependencies {
     implementation("io.ktor:ktor-server-netty")
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-config-yaml")
+    implementation("io.github.cdimascio:dotenv-kotlin:6.4.2")
     implementation("jakarta.xml.ws:jakarta.xml.ws-api:4.0.2")
     runtimeOnly("com.sun.xml.ws:jaxws-rt:4.0.3")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("io.ktor:ktor-client-content-negotiation")
     testImplementation("io.ktor:ktor-client-core")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+    // Source: https://mvnrepository.com/artifact/com.azure/azure-storage-blob
+    implementation("com.azure:azure-storage-blob:12.33.3")
+    implementation("io.github.cdimascio:dotenv-kotlin:6.5.1")
 }

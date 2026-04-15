@@ -1,30 +1,38 @@
 package at.ac.hcw.se
 
-import at.ac.hcw.se.database.UserService
+import at.ac.hcw.se.database.CarTable
 import at.ac.hcw.se.database.UserTable
+import at.ac.hcw.se.service.CarService
+import at.ac.hcw.se.service.UserService
 import io.ktor.server.application.*
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import io.github.cdimascio.dotenv.dotenv
 import java.util.UUID
 
-fun Application.configureDatabases(): UserService {
+val dotenv = dotenv {
+    ignoreIfMissing = true
+}
+
+fun Application.configureDatabases(blobStorage: BlobStorageService? = null) {
     val embedded = environment.config.propertyOrNull("embedded")?.getString()?.toBooleanStrictOrNull() ?: true
     val database = connectToDatabase(embedded = embedded)
     transaction(database) {
         SchemaUtils.create(UserTable)
+        SchemaUtils.create(CarTable)
     }
-    val userService = UserService(database)
-    runBlocking { userService.ensureAdminExists() }
-    return userService
+    UserService.init(database)
+    CarService.init(database, blobStorage)
+    runBlocking { UserService.ensureAdminExists() }
 }
 
 /**
  * Creates a database connection for Exposed ORM.
  *
- * Set [embedded] to false and provide postgres.url / postgres.user / postgres.password
- * in application.yaml to use a real PostgreSQL instance.
+ * Set [embedded] to false in application.yaml and provide POSTGRES_URL / POSTGRES_USER / POSTGRES_PASSWORD
+ * as environment variables (e.g. via .env) to use a real PostgreSQL instance.
  */
 fun Application.connectToDatabase(embedded: Boolean): Database {
     return if (embedded) {
@@ -36,13 +44,14 @@ fun Application.connectToDatabase(embedded: Boolean): Database {
             password = ""
         )
     } else {
-        val url = environment.config.property("postgres.url").getString()
+        val url = dotenv["POSTGRES_URL"]
+            ?: error("POSTGRES_URL is not set in .env or environment")
         log.info("Connecting to PostgreSQL at $url")
         Database.connect(
             url = url,
             driver = "org.postgresql.Driver",
-            user = environment.config.property("postgres.user").getString(),
-            password = environment.config.property("postgres.password").getString()
+            user = dotenv["POSTGRES_USER"] ?: error("POSTGRES_USER is not set in .env or environment"),
+            password = dotenv["POSTGRES_PASSWORD"] ?: error("POSTGRES_PASSWORD is not set in .env or environment")
         )
     }
 }

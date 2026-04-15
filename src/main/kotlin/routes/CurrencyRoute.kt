@@ -26,5 +26,11 @@ fun Application.configureCurrencyRoutes() {
                 call.respond(HttpStatusCode.OK, result.toString())
             }
         }
+        route("/currency-service") {
+            get({}){
+                val result = CurrencyService.getSupportedCurrencies()
+                call.respond(HttpStatusCode.OK, result)
+            }
+        }
     }
 }
