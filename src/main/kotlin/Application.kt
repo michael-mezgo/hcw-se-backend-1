@@ -15,8 +15,6 @@ fun main(args: Array<String>) {
 fun Application.module() {
     val dotenv = dotenv { ignoreIfMissing = true }
     val azureConnectionString = dotenv["AZURE_STORAGE_CONNECTION_STRING"]
-    print(CurrencyService.getSupportedCurrencies())
-
     val blobStorage = if (azureConnectionString != null) {
         BlobStorageService(
             connectionString = azureConnectionString,
