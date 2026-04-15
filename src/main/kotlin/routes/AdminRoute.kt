@@ -1,5 +1,6 @@
 package at.ac.hcw.se.routes
 
+import at.ac.hcw.se.BlobStorageService
 import at.ac.hcw.se.dto.*
 import at.ac.hcw.se.business.Admin
 import at.ac.hcw.se.service.ServiceException
@@ -9,13 +10,18 @@ import io.github.smiley4.ktorswaggerui.dsl.routing.get
 import io.github.smiley4.ktorswaggerui.dsl.routing.patch
 import io.github.smiley4.ktorswaggerui.dsl.routing.post
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readByteArray
+import kotlinx.serialization.json.Json
+import java.util.UUID
 
-fun Application.configureAdminRoutes() {
+fun Application.configureAdminRoutes(blobStorage: BlobStorageService? = null) {
     routing {
         authenticate("admin-jwt") {
             route("/users") {
@@ -115,16 +121,36 @@ fun Application.configureAdminRoutes() {
                 post({
                     tags("Admin - Cars")
                     summary = "Create a car"
-                    description = "Adds a new car to the fleet. Requires admin privileges."
-                    request { body<CarCreateRequest> { description = "Car data" } }
+                    description = "Adds a new car to the fleet. Accepts multipart/form-data with a 'data' part (JSON car fields) and an optional 'image' part (image file uploaded to Azure Blob Storage). Requires admin privileges."
                     response {
                         HttpStatusCode.Created to { description = "Car created"; body<Map<String, Int>>() }
                         HttpStatusCode.Forbidden to { description = "Admin privileges required" }
+                        HttpStatusCode.BadRequest to { description = "Missing or invalid car data" }
                     }
                 }) {
                     val admin = call.toAdmin()
-                    val dto = call.receive<CarCreateRequest>()
-                    val id = admin.createCar(dto)
+                    var carData: CarCreateRequest? = null
+                    var imageUrl: String? = null
+
+                    call.receiveMultipart().forEachPart { part ->
+                        when {
+                            part is PartData.FormItem && part.name == "data" -> {
+                                carData = Json.decodeFromString(part.value)
+                            }
+                            part is PartData.FileItem && part.name == "image" && blobStorage != null -> {
+                                val bytes = part.provider().readRemaining().readByteArray()
+                                val ext = part.originalFileName?.substringAfterLast('.', "jpg") ?: "jpg"
+                                val blobName = "cars/${UUID.randomUUID()}.$ext"
+                                blobStorage.upload(blobName, bytes)
+                                imageUrl = blobName
+                            }
+                        }
+                        part.dispose()
+                    }
+
+                    val dto = carData ?: throw ServiceException.BadRequest("Missing 'data' form field with car JSON")
+                    val finalDto = if (imageUrl != null) dto.copy(imageUrl = imageUrl!!) else dto
+                    val id = admin.createCar(finalDto)
                     call.respond(HttpStatusCode.Created, mapOf("id" to id))
                 }
 

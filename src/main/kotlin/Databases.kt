@@ -16,7 +16,7 @@ val dotenv = dotenv {
     ignoreIfMissing = true
 }
 
-fun Application.configureDatabases() {
+fun Application.configureDatabases(blobStorage: BlobStorageService? = null) {
     val embedded = environment.config.propertyOrNull("embedded")?.getString()?.toBooleanStrictOrNull() ?: true
     val database = connectToDatabase(embedded = embedded)
     transaction(database) {
@@ -24,7 +24,7 @@ fun Application.configureDatabases() {
         SchemaUtils.create(CarTable)
     }
     UserService.init(database)
-    CarService.init(database)
+    CarService.init(database, blobStorage)
     runBlocking { UserService.ensureAdminExists() }
 }
 

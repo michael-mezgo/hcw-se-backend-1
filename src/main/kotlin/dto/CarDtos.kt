@@ -15,7 +15,7 @@ data class CarCreateRequest(
     val year: Int,
     val pricePerDay: Double,
     val description: String,
-    val imageUrl: String,
+    val imageUrl: String = "",
     val transmission: String,
     val power: Int,
     val fuelType: String,

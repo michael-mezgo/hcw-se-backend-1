@@ -1,5 +1,6 @@
 package at.ac.hcw.se.service
 
+import at.ac.hcw.se.BlobStorageService
 import at.ac.hcw.se.business.Car
 import at.ac.hcw.se.database.CarEntity
 import at.ac.hcw.se.database.CarTable
@@ -14,10 +15,15 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 object CarService {
 
     private lateinit var database: Database
+    private var blobStorage: BlobStorageService? = null
 
-    fun init(database: Database) {
+    fun init(database: Database, blobStorage: BlobStorageService? = null) {
         this.database = database
+        this.blobStorage = blobStorage
     }
+
+    private fun resolveImageUrl(blobName: String): String =
+        blobStorage?.getSignedUrl(blobName, expiryMinutes = 15) ?: blobName
 
     suspend fun create(dto: CarCreateRequest): Int =
         newSuspendedTransaction(Dispatchers.IO, database) {
@@ -39,12 +45,12 @@ object CarService {
 
     suspend fun listAllAvailable(): List<Car> =
         newSuspendedTransaction(Dispatchers.IO, database) {
-            CarEntity.find { CarTable.is_available eq true }.map { it.toDomain() }
+            CarEntity.find { CarTable.is_available eq true }.map { it.toDomain(::resolveImageUrl) }
         }
 
     suspend fun getById(id: Int): Car? =
         newSuspendedTransaction(Dispatchers.IO, database) {
-            CarEntity.findById(id)?.toDomain()
+            CarEntity.findById(id)?.toDomain(::resolveImageUrl)
         }
 
     suspend fun update(id: Int, dto: CarUpdate): Boolean =
