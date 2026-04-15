@@ -1,13 +1,11 @@
 package at.ac.hcw.se
 
 import org.tempuri.CurrencyService as CurrencyServiceWs
-import java.net.URI
 
 object CurrencyService {
-    private const val WSDL_URL = "http://localhost:5125/CurrencyService.svc?wsdl"
-
     private val port by lazy {
-        CurrencyServiceWs(URI(WSDL_URL).toURL()).basicHttpBindingICurrencyService
+        val wsdlUrl = object {}.javaClass.getResource("/wsdl/CurrencyService.wsdl")
+        CurrencyServiceWs(wsdlUrl).basicHttpBindingICurrencyService
     }
 
     fun convert(fromCurrency: String, toCurrency: String, amount: Double, apiKey: String): Double {
