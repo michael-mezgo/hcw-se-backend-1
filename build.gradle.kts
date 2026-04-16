@@ -104,7 +104,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logback_version")
     implementation("io.ktor:ktor-server-config-yaml")
     implementation("io.github.cdimascio:dotenv-kotlin:6.4.2")
-    implementation("jakarta.xml.ws:jakarta.xml.ws-api:4.0.2")
+    implementation("jakarta.xml.ws:jakarta.xml.ws-api:4.0.3")
     runtimeOnly("com.sun.xml.ws:jaxws-rt:4.0.4")
     testImplementation("io.ktor:ktor-server-test-host")
     testImplementation("io.ktor:ktor-client-content-negotiation")
