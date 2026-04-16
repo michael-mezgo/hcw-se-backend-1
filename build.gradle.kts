@@ -8,7 +8,7 @@ val postgres_version: String by project
 val swagger_ui_version: String by project
 
 plugins {
-    kotlin("jvm") version "2.3.10"
+    kotlin("jvm") version "2.3.20"
     id("io.ktor.plugin") version "3.4.2"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.10"
     id("com.github.bjornvester.wsdl2java") version "2.0.2"
