@@ -32,7 +32,7 @@ class CarEntity(id: EntityID<Int>) : IntEntity(id) {
         transmission = transmission.name,
         power        = power,
         fuelType     = fuel_type.name,
-        isAvailable  = booked_by?.toDomain(),
+        bookedBy     = booked_by?.toDomain(),
         location     = Coordinate(latitude, longitude),
     )
 }
