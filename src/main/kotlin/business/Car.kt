@@ -1,7 +1,9 @@
 package at.ac.hcw.se.business
 
+import at.ac.hcw.se.database.CarTable.booked_by
 import at.ac.hcw.se.dto.CarResponse
 import at.ac.hcw.se.dto.CoordinateDto
+import at.ac.hcw.se.dto.UserResponse
 
 class Car(
     val id: Int,
@@ -14,7 +16,7 @@ class Car(
     val transmission: String, //TODO: Use enums
     val power: Int,
     val fuelType: String, //TODO: Use enums
-    val isAvailable: Boolean,
+    val isAvailable: User?,
     val location: Coordinate,
 ) {
 
@@ -29,7 +31,7 @@ class Car(
         transmission = transmission,
         power = power,
         fuelType = fuelType,
-        isAvailable = isAvailable,
+        isAvailable = isAvailable?.toResponse(),
         location = CoordinateDto(location.latitude, location.longitude),
     )
 }

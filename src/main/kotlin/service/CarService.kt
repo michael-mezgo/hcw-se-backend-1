@@ -1,11 +1,13 @@
 package at.ac.hcw.se.service
 
 import at.ac.hcw.se.BlobStorageService
+import at.ac.hcw.se.business.BookingResult
 import at.ac.hcw.se.business.Car
 import at.ac.hcw.se.database.CarEntity
 import at.ac.hcw.se.database.CarTable
 import at.ac.hcw.se.business.FuelType
 import at.ac.hcw.se.business.Transmission
+import at.ac.hcw.se.business.User
 import at.ac.hcw.se.dto.CarCreateRequest
 import at.ac.hcw.se.dto.CarUpdate
 import kotlinx.coroutines.Dispatchers
@@ -77,5 +79,16 @@ object CarService {
             val car = CarEntity.findById(id) ?: return@newSuspendedTransaction false
             car.delete()
             true
+        }
+
+    suspend fun book(id: Int, user: User): BookingResult =
+        newSuspendedTransaction(Dispatchers.IO, database) {
+            val car = CarEntity.findById(id) ?: return@newSuspendedTransaction BookingResult.CarNotFound
+            if (car.booked_by != null) {
+                return@newSuspendedTransaction BookingResult.CarUnavailable
+            } else {
+                car.booked_by = user
+                return@newSuspendedTransaction BookingResult.CarBooked
+            }
         }
 }

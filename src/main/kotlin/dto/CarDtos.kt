@@ -1,5 +1,6 @@
 package at.ac.hcw.se.dto
 
+import at.ac.hcw.se.business.User
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -48,6 +49,6 @@ data class CarResponse(
     val transmission: String,
     val power: Int,
     val fuelType: String,
-    val isAvailable: Boolean,
+    val isAvailable: UserResponse?,
     val location: CoordinateDto,
 )

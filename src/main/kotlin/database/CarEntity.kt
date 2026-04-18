@@ -17,7 +17,7 @@ class CarEntity(id: EntityID<Int>) : IntEntity(id) {
     var transmission by CarTable.transmission
     var power by CarTable.power
     var fuel_type by CarTable.fuel_type
-    var is_available by CarTable.is_available
+    var booked_by by UserEntity optionalReferencedOn CarTable.booked_by
     var latitude by CarTable.latitude
     var longitude by CarTable.longitude
 
@@ -32,7 +32,7 @@ class CarEntity(id: EntityID<Int>) : IntEntity(id) {
         transmission = transmission.name,
         power        = power,
         fuelType     = fuel_type.name,
-        isAvailable  = is_available,
+        isAvailable  = booked_by?.toDomain(),
         location     = Coordinate(latitude, longitude),
     )
 }
