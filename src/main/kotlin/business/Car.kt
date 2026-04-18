@@ -30,7 +30,6 @@ class Car(
         transmission = transmission,
         power = power,
         fuelType = fuelType,
-        bookedBy = bookedBy?.toResponse(),
         isAvailable = isAvailable,
         location = CoordinateDto(location.latitude, location.longitude),
     )
