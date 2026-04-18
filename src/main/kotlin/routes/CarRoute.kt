@@ -69,7 +69,7 @@ fun Application.configureCarRoutes() {
                         BookingResult.UserNotFound -> throw ServiceException.NotFound("User not found")
                         BookingResult.CarUnavailable -> throw ServiceException.Conflict("Car is not available")
                         BookingResult.CarBooked -> call.respond(HttpStatusCode.OK, mapOf("message" to "Car booked successfully"))
-                        BookingResult.CarUnbooked -> call.respond(HttpStatusCode.OK)
+                        BookingResult.CarUnbooked -> {} // not returned by book()
                     }
                 }
 
@@ -90,7 +90,8 @@ fun Application.configureCarRoutes() {
                         BookingResult.CarNotFound -> throw ServiceException.NotFound("Car not found")
                         BookingResult.CarUnavailable -> throw ServiceException.Conflict("Car is not booked")
                         BookingResult.CarUnbooked -> call.respond(HttpStatusCode.OK, mapOf("message" to "Car unbooked successfully"))
-                        else -> call.respond(HttpStatusCode.OK)
+                        BookingResult.CarBooked -> {} // not returned by unbook()
+                        BookingResult.UserNotFound -> {} // not returned by unbook()
                     }
                 }
             }
