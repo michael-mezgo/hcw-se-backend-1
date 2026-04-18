@@ -2,16 +2,13 @@ package at.ac.hcw.se.routes
 
 import at.ac.hcw.se.business.BookingResult
 import at.ac.hcw.se.business.User
-import at.ac.hcw.se.database.CarEntity
-import at.ac.hcw.se.database.CarTable.description
-import at.ac.hcw.se.service.CarService
+import at.ac.hcw.se.carService
 import at.ac.hcw.se.dto.CarResponse
 import at.ac.hcw.se.dto.JwtPrincipal
 import at.ac.hcw.se.service.ServiceException
 import at.ac.hcw.se.service.UserService
 import io.github.smiley4.ktorswaggerui.dsl.routing.get
 import io.github.smiley4.ktorswaggerui.dsl.routing.post
-import io.ktor.client.request.request
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.authenticate
@@ -31,7 +28,7 @@ fun Application.configureCarRoutes() {
                     HttpStatusCode.OK to { description = "List of available cars"; body<List<CarResponse>>() }
                 }
             }) {
-                val cars = CarService.listAllAvailable()
+                val cars = carService.listAllAvailable()
                 call.respond(HttpStatusCode.OK, cars.map { it.toResponse() })
             }
 
@@ -47,7 +44,7 @@ fun Application.configureCarRoutes() {
             }) {
                 val id = call.parameters["id"]?.toIntOrNull()
                     ?: throw ServiceException.BadRequest("Invalid car ID")
-                val car = CarService.getById(id)
+                val car = carService.getById(id)
                     ?: throw ServiceException.NotFound("Car not found")
                 call.respond(HttpStatusCode.OK, car.toResponse())
             }
@@ -55,18 +52,46 @@ fun Application.configureCarRoutes() {
             authenticate("user-jwt") {
                 post("/{id}/book", {
                     tags("Cars")
-                    summary = "Book car"
-                    description = "Books a specific car"
-                    request { pathParameter<Int>("id") { description = "Car found" } }
+                    summary = "Book a car"
+                    description = "Books a specific car for the authenticated user."
+                    request { pathParameter<Int>("id") { description = "Car ID" } }
                     response {
-                        HttpStatusCode.OK to { description = "Accessed Car" }
-                        HttpStatusCode.NotFound to { description = "Car not found" }
+                        HttpStatusCode.OK to { description = "Car booked successfully" }
+                        HttpStatusCode.NotFound to { description = "Car or user not found" }
+                        HttpStatusCode.Conflict to { description = "Car is not available" }
                     }
                 }) {
                     val id = call.parameters["id"]?.toIntOrNull()
                         ?: throw ServiceException.BadRequest("Invalid car ID")
                     val user = call.toUser()
+                    when (carService.book(id, user.id)) {
+                        BookingResult.CarNotFound -> throw ServiceException.NotFound("Car not found")
+                        BookingResult.UserNotFound -> throw ServiceException.NotFound("User not found")
+                        BookingResult.CarUnavailable -> throw ServiceException.Conflict("Car is not available")
+                        BookingResult.CarBooked -> call.respond(HttpStatusCode.OK, mapOf("message" to "Car booked successfully"))
+                        BookingResult.CarUnbooked -> call.respond(HttpStatusCode.OK)
+                    }
+                }
 
+                post("/{id}/unbook", {
+                    tags("Cars")
+                    summary = "Unbook a car"
+                    description = "Releases a booking on a specific car."
+                    request { pathParameter<Int>("id") { description = "Car ID" } }
+                    response {
+                        HttpStatusCode.OK to { description = "Car unbooked successfully" }
+                        HttpStatusCode.NotFound to { description = "Car not found" }
+                        HttpStatusCode.Conflict to { description = "Car is not booked" }
+                    }
+                }) {
+                    val id = call.parameters["id"]?.toIntOrNull()
+                        ?: throw ServiceException.BadRequest("Invalid car ID")
+                    when (carService.unbook(id)) {
+                        BookingResult.CarNotFound -> throw ServiceException.NotFound("Car not found")
+                        BookingResult.CarUnavailable -> throw ServiceException.Conflict("Car is not booked")
+                        BookingResult.CarUnbooked -> call.respond(HttpStatusCode.OK, mapOf("message" to "Car unbooked successfully"))
+                        else -> call.respond(HttpStatusCode.OK)
+                    }
                 }
             }
         }
@@ -78,3 +103,4 @@ private suspend fun ApplicationCall.toUser(): User {
     return UserService.read(principal.userId)
         ?: throw ServiceException.NotFound("User not found")
 }
+

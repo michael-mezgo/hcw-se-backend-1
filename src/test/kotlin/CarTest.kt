@@ -230,13 +230,91 @@ class CarTest : BaseTest() {
         }
     }
 
+    // ── Book / Unbook car ─────────────────────────────────────────────────────
+
     @Test
-    fun testAdminDeleteCarForbiddenForUser() = testApp {
+    fun testBookCar() = testApp {
         val adminClient = loginAsAdmin()
         val id = createCar(adminClient)
         val userClient = loginAsUser()
-        userClient.delete("/cars/$id").apply {
-            assertEquals(HttpStatusCode.Forbidden, status)
+        userClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+    }
+
+    @Test
+    fun testBookCarNotFound() = testApp {
+        val userClient = loginAsUser()
+        userClient.post("/cars/99999/book").apply {
+            assertEquals(HttpStatusCode.NotFound, status)
+        }
+    }
+
+    @Test
+    fun testBookCarAlreadyBooked() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val userClient = loginAsUser()
+        userClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+        userClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.Conflict, status)
+        }
+    }
+
+    @Test
+    fun testBookCarRequiresAuth() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val anonClient = jsonClient()
+        anonClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.Unauthorized, status)
+        }
+    }
+
+    @Test
+    fun testUnbookCar() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val userClient = loginAsUser()
+        userClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+        userClient.post("/cars/$id/unbook").apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+    }
+
+    @Test
+    fun testUnbookCarNotFound() = testApp {
+        val userClient = loginAsUser()
+        userClient.post("/cars/99999/unbook").apply {
+            assertEquals(HttpStatusCode.NotFound, status)
+        }
+    }
+
+    @Test
+    fun testUnbookCarNotBooked() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val userClient = loginAsUser()
+        userClient.post("/cars/$id/unbook").apply {
+            assertEquals(HttpStatusCode.Conflict, status)
+        }
+    }
+
+    @Test
+    fun testBookedCarNotListedAsAvailable() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val userClient = loginAsUser()
+        userClient.post("/cars/$id/book")
+        adminClient.get("/cars").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            val cars = body<List<CarResponse>>()
+            assertTrue(cars.none { it.id == id })
         }
     }
 }
+

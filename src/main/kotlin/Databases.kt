@@ -2,6 +2,7 @@ package at.ac.hcw.se
 
 import at.ac.hcw.se.database.CarTable
 import at.ac.hcw.se.database.UserTable
+import at.ac.hcw.se.repository.exposed.ExposedCarRepository
 import at.ac.hcw.se.service.CarService
 import at.ac.hcw.se.service.UserService
 import io.ktor.server.application.*
@@ -16,6 +17,9 @@ val dotenv = dotenv {
     ignoreIfMissing = true
 }
 
+lateinit var carService: CarService
+    private set
+
 fun Application.configureDatabases(blobStorage: BlobStorageService? = null) {
     val embedded = environment.config.propertyOrNull("embedded")?.getString()?.toBooleanStrictOrNull() ?: true
     val database = connectToDatabase(embedded = embedded)
@@ -24,7 +28,7 @@ fun Application.configureDatabases(blobStorage: BlobStorageService? = null) {
         SchemaUtils.create(CarTable)
     }
     UserService.init(database)
-    CarService.init(database, blobStorage)
+    carService = CarService(ExposedCarRepository(database, blobStorage))
     runBlocking { UserService.ensureAdminExists() }
 }
 

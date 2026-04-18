@@ -1,6 +1,6 @@
 package at.ac.hcw.se.business
 
-import at.ac.hcw.se.service.CarService
+import at.ac.hcw.se.carService
 import at.ac.hcw.se.service.UserService
 import at.ac.hcw.se.dto.AdminUserCreate
 import at.ac.hcw.se.dto.AdminUserUpdate
@@ -60,16 +60,16 @@ class Admin(
     // ── Car management ──────────────────────────────────────────────────────
 
     suspend fun createCar(dto: CarCreateRequest): Int {
-        return CarService.create(dto)
+        return carService.create(dto)
     }
 
     suspend fun updateCar(carId: Int, dto: CarUpdate) {
-        if (!CarService.update(carId, dto))
+        if (!carService.update(carId, dto))
             throw ServiceException.NotFound("Car not found")
     }
 
     suspend fun deleteCar(carId: Int) {
-        if (!CarService.delete(carId))
+        if (!carService.delete(carId))
             throw ServiceException.NotFound("Car not found")
     }
 }

@@ -49,6 +49,7 @@ data class CarResponse(
     val transmission: String,
     val power: Int,
     val fuelType: String,
-    val isAvailable: UserResponse?,
+    val bookedBy: UserResponse?,
+    val isAvailable: Boolean,
     val location: CoordinateDto,
 )
