@@ -1,6 +1,8 @@
 package at.ac.hcw.se.routes
 
+import at.ac.hcw.se.carService
 import at.ac.hcw.se.service.UserService
+import at.ac.hcw.se.dto.CarResponse
 import at.ac.hcw.se.dto.LoginResponse
 import at.ac.hcw.se.dto.UserLoginRequest
 import at.ac.hcw.se.dto.UserRegistration
@@ -91,6 +93,19 @@ fun Application.configureUserRoutes() {
                     val update = call.receive<UserUpdate>()
                     user.updateProfile(update)
                     call.respond(HttpStatusCode.OK, mapOf("message" to "User updated successfully"))
+                }
+
+                get("/cars", {
+                    tags("Users")
+                    summary = "List my booked cars"
+                    description = "Returns all cars currently booked by the authenticated user."
+                    response {
+                        HttpStatusCode.OK to { description = "List of booked cars"; body<List<CarResponse>>() }
+                    }
+                }) {
+                    val principal = call.principal<JwtPrincipal>()!!
+                    val cars = carService.listBookedByUser(principal.userId)
+                    call.respond(HttpStatusCode.OK, cars.map { it.toResponse() })
                 }
 
                 delete({

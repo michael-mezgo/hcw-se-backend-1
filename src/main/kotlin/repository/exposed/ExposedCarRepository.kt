@@ -13,7 +13,9 @@ import at.ac.hcw.se.dto.CarUpdate
 import at.ac.hcw.se.repository.CarRepository
 import kotlinx.coroutines.Dispatchers
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
+import org.jetbrains.exposed.sql.update
 
 class ExposedCarRepository(
     private val database: Database,
@@ -79,15 +81,19 @@ class ExposedCarRepository(
 
     override suspend fun book(carId: Int, userId: Int): BookingResult =
         newSuspendedTransaction(Dispatchers.IO, database) {
-            val car = CarEntity.findById(carId)
+            CarEntity.findById(carId)
                 ?: return@newSuspendedTransaction BookingResult.CarNotFound
-            val user = UserEntity.findById(userId)
+            UserEntity.findById(userId)
                 ?: return@newSuspendedTransaction BookingResult.UserNotFound
-            if (car.booked_by != null) {
-                return@newSuspendedTransaction BookingResult.CarUnavailable
+
+            val updatedRows = CarTable.update(
+                where = { (CarTable.id eq carId) and CarTable.booked_by.isNull() }
+            ) {
+                it[booked_by] = userId
             }
-            car.booked_by = user
-            BookingResult.CarBooked
+
+            if (updatedRows == 0) BookingResult.CarUnavailable
+            else BookingResult.CarBooked
         }
 
     override suspend fun unbook(carId: Int): BookingResult =
@@ -99,5 +105,11 @@ class ExposedCarRepository(
             }
             car.booked_by = null
             BookingResult.CarUnbooked
+        }
+
+    override suspend fun listBookedByUser(userId: Int): List<Car> =
+        newSuspendedTransaction(Dispatchers.IO, database) {
+            CarEntity.find { CarTable.booked_by eq userId }
+                .map { it.toDomain(::resolveImageUrl) }
         }
 }

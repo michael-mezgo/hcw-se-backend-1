@@ -13,4 +13,5 @@ interface CarRepository {
     suspend fun delete(id: Int): Boolean
     suspend fun book(carId: Int, userId: Int): BookingResult
     suspend fun unbook(carId: Int): BookingResult
+    suspend fun listBookedByUser(userId: Int): List<Car>
 }

@@ -30,4 +30,7 @@ class CarService(
 
     suspend fun unbook(carId: Int): BookingResult =
         carRepository.unbook(carId)
+
+    suspend fun listBookedByUser(userId: Int): List<Car> =
+        carRepository.listBookedByUser(userId)
 }
