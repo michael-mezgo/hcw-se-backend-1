@@ -35,7 +35,7 @@ class Admin(
     suspend fun createUser(dto: AdminUserCreate): Int {
         try {
             return UserService.adminCreate(dto)
-        } catch (e: ExposedSQLException) {
+        } catch (_: ExposedSQLException) {
             throw ServiceException.Conflict("Username or email already taken")
         }
     }
@@ -58,6 +58,11 @@ class Admin(
     }
 
     // ── Car management ──────────────────────────────────────────────────────
+
+    suspend fun getCar(carId: Int): Car {
+        return carService.getById(carId)
+            ?: throw ServiceException.NotFound("Car not found")
+    }
 
     suspend fun createCar(dto: CarCreateRequest): Int {
         return carService.create(dto)

@@ -4,6 +4,7 @@ import at.ac.hcw.se.BlobStorageService
 import at.ac.hcw.se.carService
 import at.ac.hcw.se.dto.*
 import at.ac.hcw.se.business.Admin
+import at.ac.hcw.se.business.BookingResult
 import at.ac.hcw.se.service.ServiceException
 import at.ac.hcw.se.service.UserService
 import io.github.smiley4.ktorswaggerui.dsl.routing.delete
@@ -155,6 +156,23 @@ fun Application.configureAdminRoutes(blobStorage: BlobStorageService? = null) {
                     call.respond(HttpStatusCode.Created, mapOf("id" to id))
                 }
 
+                get("/{id}", {
+                    tags("Admin - Cars")
+                    summary = "Get a car (admin)"
+                    description = "Returns full car details including the user who booked it, if any. Requires admin privileges."
+                    request { pathParameter<Int>("id") { description = "Car ID" } }
+                    response {
+                        HttpStatusCode.OK to { description = "Car details with booking info"; body<AdminCarResponse>() }
+                        HttpStatusCode.Forbidden to { description = "Admin privileges required" }
+                        HttpStatusCode.NotFound to { description = "Car not found" }
+                    }
+                }) {
+                    val admin = call.toAdmin()
+                    val id = call.parameters["id"]?.toIntOrNull()
+                        ?: throw ServiceException.BadRequest("Invalid car ID")
+                    call.respond(HttpStatusCode.OK, admin.getCar(id).toAdminResponse(blobStorage))
+                }
+
                 patch("/{id}", {
                     tags("Admin - Cars")
                     summary = "Update a car"
@@ -219,6 +237,30 @@ fun Application.configureAdminRoutes(blobStorage: BlobStorageService? = null) {
                         ?: throw ServiceException.BadRequest("Invalid car ID")
                     admin.deleteCar(id)
                     call.respond(HttpStatusCode.NoContent)
+                }
+
+                post("/{id}/unbook", {
+                    tags("Admin - Cars")
+                    summary = "Unbook a car (admin)"
+                    description = "Forcefully releases the booking on a specific car. Requires admin privileges."
+                    request { pathParameter<Int>("id") { description = "Car ID" } }
+                    response {
+                        HttpStatusCode.OK to { description = "Car unbooked successfully" }
+                        HttpStatusCode.Forbidden to { description = "Admin privileges required" }
+                        HttpStatusCode.NotFound to { description = "Car not found" }
+                        HttpStatusCode.Conflict to { description = "Car is not booked" }
+                    }
+                }) {
+                    call.toAdmin()
+                    val id = call.parameters["id"]?.toIntOrNull()
+                        ?: throw ServiceException.BadRequest("Invalid car ID")
+                    when (carService.unbook(id)) {
+                        BookingResult.CarNotFound -> throw ServiceException.NotFound("Car not found")
+                        BookingResult.CarUnavailable -> throw ServiceException.Conflict("Car is not booked")
+                        BookingResult.CarUnbooked -> call.respond(HttpStatusCode.OK, mapOf("message" to "Car unbooked successfully"))
+                        BookingResult.CarBooked -> {}
+                        BookingResult.UserNotFound -> {}
+                    }
                 }
             }
         }

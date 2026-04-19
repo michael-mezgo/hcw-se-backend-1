@@ -3,6 +3,23 @@ package at.ac.hcw.se.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class AdminCarResponse(
+    val id: Int,
+    val manufacturer: String,
+    val model: String,
+    val year: Int,
+    val pricePerDay: Double,
+    val description: String,
+    val imageUrl: String,
+    val transmission: String,
+    val power: Int,
+    val fuelType: String,
+    val isAvailable: Boolean,
+    val location: CoordinateDto,
+    val bookedBy: UserResponse?,
+)
+
+@Serializable
 data class CoordinateDto(
     val latitude: Double,
     val longitude: Double,
