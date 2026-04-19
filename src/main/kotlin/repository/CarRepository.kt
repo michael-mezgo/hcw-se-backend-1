@@ -7,6 +7,7 @@ import at.ac.hcw.se.dto.CarUpdate
 
 interface CarRepository {
     suspend fun create(dto: CarCreateRequest): Int
+    suspend fun listAll(): List<Car>
     suspend fun listAvailable(): List<Car>
     suspend fun findById(id: Int): Car?
     suspend fun update(id: Int, dto: CarUpdate): Boolean

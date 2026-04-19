@@ -2,7 +2,6 @@ package at.ac.hcw.se
 
 import at.ac.hcw.se.routes.configureAdminRoutes
 import at.ac.hcw.se.routes.configureCarRoutes
-import at.ac.hcw.se.routes.configureBlobRoutes
 import at.ac.hcw.se.routes.configureCurrencyRoutes
 import at.ac.hcw.se.routes.configureUserRoutes
 import io.github.cdimascio.dotenv.dotenv
@@ -31,10 +30,9 @@ fun Application.module() {
     configureStatusPages()
     configureDatabases(blobStorage)
     configureSecurity()
-    configureUserRoutes()
+    configureUserRoutes(blobStorage)
     configureAdminRoutes(blobStorage)
-    configureCarRoutes()
-    blobStorage?.let { configureBlobRoutes(it) }
+    configureCarRoutes(blobStorage)
     configureCurrencyRoutes()
     configureRouting()
 }

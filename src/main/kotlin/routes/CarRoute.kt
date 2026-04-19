@@ -1,5 +1,6 @@
 package at.ac.hcw.se.routes
 
+import at.ac.hcw.se.BlobStorageService
 import at.ac.hcw.se.business.BookingResult
 import at.ac.hcw.se.business.User
 import at.ac.hcw.se.carService
@@ -16,20 +17,21 @@ import io.ktor.server.auth.principal
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Application.configureCarRoutes() {
+fun Application.configureCarRoutes(blobStorage: BlobStorageService? = null) {
     routing {
         route("/cars") {
-
             get({
                 tags("Cars")
-                summary = "List all available cars"
-                description = "Returns all cars that are currently available for rental."
+                summary = "List cars"
+                description = "Returns all cars. Use ?available=true to filter for available (unbooked) cars only."
+                request { queryParameter<Boolean>("available") { description = "If true, only available cars are returned"; required = false } }
                 response {
-                    HttpStatusCode.OK to { description = "List of available cars"; body<List<CarResponse>>() }
+                    HttpStatusCode.OK to { description = "List of cars"; body<List<CarResponse>>() }
                 }
             }) {
-                val cars = carService.listAllAvailable()
-                call.respond(HttpStatusCode.OK, cars.map { it.toResponse() })
+                val onlyAvailable = call.request.queryParameters["available"]?.toBooleanStrictOrNull()
+                val cars = if (onlyAvailable == true) carService.listAllAvailable() else carService.listAll()
+                call.respond(HttpStatusCode.OK, cars.map { it.toResponse(blobStorageService = blobStorage) })
             }
 
             get("/{id}", {
@@ -46,7 +48,7 @@ fun Application.configureCarRoutes() {
                     ?: throw ServiceException.BadRequest("Invalid car ID")
                 val car = carService.getById(id)
                     ?: throw ServiceException.NotFound("Car not found")
-                call.respond(HttpStatusCode.OK, car.toResponse())
+                call.respond(HttpStatusCode.OK, car.toResponse(blobStorageService = blobStorage))
             }
 
             authenticate("user-jwt") {

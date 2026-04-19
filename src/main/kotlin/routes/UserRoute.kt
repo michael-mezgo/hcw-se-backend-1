@@ -1,5 +1,6 @@
 package at.ac.hcw.se.routes
 
+import at.ac.hcw.se.BlobStorageService
 import at.ac.hcw.se.carService
 import at.ac.hcw.se.service.UserService
 import at.ac.hcw.se.dto.CarResponse
@@ -22,7 +23,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Application.configureUserRoutes() {
+fun Application.configureUserRoutes(blobStorage: BlobStorageService? = null) {
     routing {
 
         // ── Authentication ──────────────────────────────────────────────────────
@@ -105,7 +106,7 @@ fun Application.configureUserRoutes() {
                 }) {
                     val principal = call.principal<JwtPrincipal>()!!
                     val cars = carService.listBookedByUser(principal.userId)
-                    call.respond(HttpStatusCode.OK, cars.map { it.toResponse() })
+                    call.respond(HttpStatusCode.OK, cars.map { it.toResponse(blobStorageService = blobStorage) })
                 }
 
                 delete({

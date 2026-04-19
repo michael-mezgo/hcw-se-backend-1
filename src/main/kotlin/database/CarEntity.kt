@@ -21,14 +21,14 @@ class CarEntity(id: EntityID<Int>) : IntEntity(id) {
     var latitude by CarTable.latitude
     var longitude by CarTable.longitude
 
-    fun toDomain(resolveImageUrl: (String) -> String = { it }) = Car(
+    fun toDomain() = Car(
         id           = id.value,
         manufacturer = manufacturer,
         model        = model,
         year         = year,
         pricePerDay  = price_per_day,
         description  = description,
-        imageUrl     = resolveImageUrl(image),
+        imageName    = image,
         transmission = transmission.name,
         power        = power,
         fuelType     = fuel_type.name,

@@ -13,6 +13,9 @@ class CarService(
     suspend fun create(dto: CarCreateRequest): Int =
         carRepository.create(dto)
 
+    suspend fun listAll(): List<Car> =
+        carRepository.listAll()
+
     suspend fun listAllAvailable(): List<Car> =
         carRepository.listAvailable()
 

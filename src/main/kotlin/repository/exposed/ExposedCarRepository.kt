@@ -22,9 +22,6 @@ class ExposedCarRepository(
     private val blobStorage: BlobStorageService? = null,
 ) : CarRepository {
 
-    private fun resolveImageUrl(blobName: String): String =
-        blobStorage?.getSignedUrl(blobName, expiryMinutes = 15) ?: blobName
-
     override suspend fun create(dto: CarCreateRequest): Int =
         newSuspendedTransaction(Dispatchers.IO, database) {
             CarEntity.new {
@@ -42,15 +39,20 @@ class ExposedCarRepository(
             }.id.value
         }
 
+    override suspend fun listAll(): List<Car> =
+        newSuspendedTransaction(Dispatchers.IO, database) {
+            CarEntity.all().map { it.toDomain() }
+        }
+
     override suspend fun listAvailable(): List<Car> =
         newSuspendedTransaction(Dispatchers.IO, database) {
             CarEntity.find { CarTable.booked_by.isNull() }
-                .map { it.toDomain(::resolveImageUrl) }
+                .map { it.toDomain() }
         }
 
     override suspend fun findById(id: Int): Car? =
         newSuspendedTransaction(Dispatchers.IO, database) {
-            CarEntity.findById(id)?.toDomain(::resolveImageUrl)
+            CarEntity.findById(id)?.toDomain()
         }
 
     override suspend fun update(id: Int, dto: CarUpdate): Boolean =
@@ -75,7 +77,9 @@ class ExposedCarRepository(
     override suspend fun delete(id: Int): Boolean =
         newSuspendedTransaction(Dispatchers.IO, database) {
             val car = CarEntity.findById(id) ?: return@newSuspendedTransaction false
+            val imageName = car.image
             car.delete()
+            if (imageName.isNotEmpty()) blobStorage?.delete(imageName)
             true
         }
 
@@ -110,6 +114,6 @@ class ExposedCarRepository(
     override suspend fun listBookedByUser(userId: Int): List<Car> =
         newSuspendedTransaction(Dispatchers.IO, database) {
             CarEntity.find { CarTable.booked_by eq userId }
-                .map { it.toDomain(::resolveImageUrl) }
+                .map { it.toDomain() }
         }
 }

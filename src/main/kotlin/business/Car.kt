@@ -1,5 +1,6 @@
 package at.ac.hcw.se.business
 
+import at.ac.hcw.se.BlobStorageService
 import at.ac.hcw.se.dto.CarResponse
 import at.ac.hcw.se.dto.CoordinateDto
 
@@ -10,7 +11,7 @@ class Car(
     val year: Int,
     val pricePerDay: Double,
     val description: String,
-    val imageUrl: String,
+    val imageName: String,
     val transmission: String,
     val power: Int,
     val fuelType: String,
@@ -19,14 +20,19 @@ class Car(
 ) {
     val isAvailable: Boolean get() = bookedBy == null
 
-    fun toResponse() = CarResponse(
+    private fun resolveImageUrl(blobStorageService: BlobStorageService?): String {
+        if (imageName.isEmpty() || blobStorageService == null) return ""
+        return blobStorageService.getSignedUrl(blobName = imageName, expiryMinutes = 15)
+    }
+
+    fun toResponse(blobStorageService: BlobStorageService?) = CarResponse(
         id = id,
         manufacturer = manufacturer,
         model = model,
         year = year,
         pricePerDay = pricePerDay,
         description = description,
-        imageUrl = imageUrl,
+        imageUrl = resolveImageUrl(blobStorageService),
         transmission = transmission,
         power = power,
         fuelType = fuelType,
