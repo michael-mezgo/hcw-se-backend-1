@@ -31,6 +31,27 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', 'gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      - name: Checkout WSDL Currency Service
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          REPO="https://x-access-token:${{ secrets.E2E_PAT }}@github.com/michael-mezgo/hcw-se-currency-converter-1.git"
+          if [ -n "$BRANCH" ] && git ls-remote --heads "$REPO" "$BRANCH" | grep -q "$BRANCH"; then
+            git clone --depth 1 --branch "$BRANCH" "$REPO" wsdl-service
+          else
+            git clone --depth 1 --branch main "$REPO" wsdl-service
+          fi
+
+      - name: Start WSDL Currency Service
+        run: |
+          docker build -t wsdl-service ./wsdl-service
+          docker run -d --name wsdl-service -p 5125:8080 wsdl-service
+          echo "Waiting for WSDL service on port 5125..."
+          timeout 60 bash -c 'until nc -z localhost 5125; do sleep 3; done' || {
+            echo "WSDL service failed to start. Logs:"
+            docker logs wsdl-service
+            exit 1
+          }
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
