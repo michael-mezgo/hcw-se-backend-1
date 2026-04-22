@@ -25,7 +25,8 @@ fun Application.module() {
         null
     }
     val apiKey = dotenv["API_KEY_CURRENCY"] ?: error("API key is not set")
-    CurrencyService.init(apiKey)
+    val wsdlServiceUrl = dotenv["WSDL_URL"] ?: "http://localhost:5125"
+    CurrencyService.init(apiKey, wsdlServiceUrl)
 
     configureHTTP()
     configureSerialization()
