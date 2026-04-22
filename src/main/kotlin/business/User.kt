@@ -15,6 +15,7 @@ open class User(
     val licenseValidUntil: String,
     val isAdmin: Boolean,
     val isLocked: Boolean,
+    val preferredCurrency: String = "USD",
 ) {
 
     fun toResponse() = UserResponse(
@@ -27,6 +28,7 @@ open class User(
         licenseValidUntil = licenseValidUntil,
         isAdmin = isAdmin,
         isLocked = isLocked,
+        preferredCurrency = preferredCurrency,
     )
 
     suspend fun updateProfile(dto: UserUpdate) {

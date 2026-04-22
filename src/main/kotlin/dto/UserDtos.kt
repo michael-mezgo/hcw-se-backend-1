@@ -13,6 +13,7 @@ data class UserRegistration(
     val licenseNumber: String,
     /** ISO 8601 date string, e.g. "2030-12-31" */
     val licenseValidUntil: String,
+    val preferredCurrency: String = "USD",
 )
 
 /** Sent by the client when authenticating. */
@@ -33,6 +34,7 @@ data class UserUpdate(
     val licenseNumber: String? = null,
     /** ISO 8601 date string, e.g. "2030-12-31" */
     val licenseValidUntil: String? = null,
+    val preferredCurrency: String? = null,
 )
 
 /** Returned to the client — never includes the password hash. */
@@ -47,6 +49,7 @@ data class UserResponse(
     val licenseValidUntil: String,
     val isAdmin: Boolean = false,
     val isLocked: Boolean = false,
+    val preferredCurrency: String = "USD",
 )
 
 /** JWT claims of the authenticated user. */
@@ -64,6 +67,7 @@ data class AdminUserCreate(
     val licenseNumber: String,
     val licenseValidUntil: String,
     val isAdmin: Boolean = false,
+    val preferredCurrency: String = "USD",
 )
 
 /** Sent by an admin when updating any user account (all fields optional). */
@@ -77,4 +81,5 @@ data class AdminUserUpdate(
     val licenseValidUntil: String? = null,
     val isAdmin: Boolean? = null,
     val isLocked: Boolean? = null,
+    val preferredCurrency: String? = null,
 )

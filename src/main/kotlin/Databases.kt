@@ -24,8 +24,7 @@ fun Application.configureDatabases(blobStorage: BlobStorageService? = null) {
     val embedded = environment.config.propertyOrNull("embedded")?.getString()?.toBooleanStrictOrNull() ?: true
     val database = connectToDatabase(embedded = embedded)
     transaction(database) {
-        SchemaUtils.create(UserTable)
-        SchemaUtils.create(CarTable)
+        SchemaUtils.createMissingTablesAndColumns(UserTable, CarTable)
     }
     UserService.init(database)
     carService = CarService(ExposedCarRepository(database, blobStorage))

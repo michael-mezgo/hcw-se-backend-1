@@ -17,6 +17,7 @@ class UserEntity(id: EntityID<Int>) : IntEntity(id) {
     var licenseValidUntil by UserTable.licenseValidUntil
     var isAdmin           by UserTable.isAdmin
     var isLocked          by UserTable.isLocked
+    var preferredCurrency by UserTable.preferredCurrency
 
     fun toDomain() = User(
         id                = id.value,
@@ -28,5 +29,6 @@ class UserEntity(id: EntityID<Int>) : IntEntity(id) {
         licenseValidUntil = licenseValidUntil,
         isAdmin           = isAdmin,
         isLocked          = isLocked,
+        preferredCurrency = preferredCurrency,
     )
 }
