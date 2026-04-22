@@ -153,8 +153,9 @@ class CarTest : BaseTest() {
         val client = loginAsAdmin()
         val id = createCar(client)
         client.patch("/cars/$id") {
-            contentType(ContentType.Application.Json)
-            setBody(CarUpdate(manufacturer = "Audi", pricePerDayInUSD = 99.0))
+            setBody(MultiPartFormDataContent(formData {
+                append("data", Json.encodeToString(CarUpdate(manufacturer = "Audi", pricePerDayInUSD = 99.0)))
+            }))
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
         }
@@ -169,8 +170,9 @@ class CarTest : BaseTest() {
     fun testAdminUpdateCarNotFound() = testApp {
         val client = loginAsAdmin()
         client.patch("/cars/99999") {
-            contentType(ContentType.Application.Json)
-            setBody(CarUpdate(manufacturer = "Audi"))
+            setBody(MultiPartFormDataContent(formData {
+                append("data", Json.encodeToString(CarUpdate(manufacturer = "Audi")))
+            }))
         }.apply {
             assertEquals(HttpStatusCode.NotFound, status)
         }

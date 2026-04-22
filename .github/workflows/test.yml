@@ -35,6 +35,8 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run tests with coverage
+        env:
+          API_KEY_CURRENCY: ${{ secrets.API_KEY_CURRENCY }}
         run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification
 
       - name: Upload coverage report
