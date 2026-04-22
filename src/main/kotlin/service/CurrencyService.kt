@@ -1,4 +1,4 @@
-package at.ac.hcw.se
+package at.ac.hcw.se.service
 
 import org.tempuri.CurrencyService as CurrencyServiceWs
 
