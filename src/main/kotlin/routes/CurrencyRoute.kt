@@ -9,23 +9,6 @@ import io.ktor.server.routing.*
 
 fun Application.configureCurrencyRoutes() {
     routing {
-        //TODO: Delete file in production
-
-        route("/exchange-rate") {
-            get( {
-                tags("ExchangeRate")
-                summary = "Currency Exchange"
-                description = "Currency Exchange"
-                response {
-                }
-            } )
-            {
-                // Implement logic to fetch and return exchange rates
-                val result = CurrencyService.convert("USD", "EUR", 1.0, "secret123") // Example conversion
-
-                call.respond(HttpStatusCode.OK, result.toString())
-            }
-        }
         route("/currency-service") {
             get({}){
                 val result = CurrencyService.getSupportedCurrencies()

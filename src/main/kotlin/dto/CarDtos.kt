@@ -3,20 +3,9 @@ package at.ac.hcw.se.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class AdminCarResponse(
-    val id: Int,
-    val manufacturer: String,
-    val model: String,
-    val year: Int,
-    val pricePerDay: Double,
-    val description: String,
-    val imageUrl: String,
-    val transmission: String,
-    val power: Int,
-    val fuelType: String,
-    val isAvailable: Boolean,
-    val location: CoordinateDto,
-    val bookedBy: UserResponse?,
+data class BookingResponse(
+    val carId: Int,
+    val bookedBy: UserResponse,
 )
 
 @Serializable
@@ -30,7 +19,7 @@ data class CarCreateRequest(
     val manufacturer: String,
     val model: String,
     val year: Int,
-    val pricePerDay: Double,
+    val pricePerDayInUSD: Double,
     val description: String,
     val imageUrl: String = "",
     val transmission: String,
@@ -44,7 +33,7 @@ data class CarUpdate(
     val manufacturer: String? = null,
     val model: String? = null,
     val year: Int? = null,
-    val pricePerDay: Double? = null,
+    val pricePerDayInUSD: Double? = null,
     val description: String? = null,
     val imageUrl: String? = null,
     val transmission: String? = null,
@@ -59,7 +48,7 @@ data class CarResponse(
     val manufacturer: String,
     val model: String,
     val year: Int,
-    val pricePerDay: Double,
+    val pricePerDay: CurrencyDto,
     val description: String,
     val imageUrl: String,
     val transmission: String,

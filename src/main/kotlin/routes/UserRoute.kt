@@ -12,6 +12,7 @@ import at.ac.hcw.se.dto.JwtPrincipal
 import at.ac.hcw.se.dto.UserUpdate
 import at.ac.hcw.se.service.Auth
 import at.ac.hcw.se.business.User
+import at.ac.hcw.se.service.CurrencyService
 import io.github.smiley4.ktorswaggerui.dsl.routing.delete
 import io.github.smiley4.ktorswaggerui.dsl.routing.get
 import io.github.smiley4.ktorswaggerui.dsl.routing.patch
@@ -100,13 +101,17 @@ fun Application.configureUserRoutes(blobStorage: BlobStorageService? = null) {
                     tags("Users")
                     summary = "List my booked cars"
                     description = "Returns all cars currently booked by the authenticated user."
+                    request {
+                        queryParameter<String>("currencyCode") { description = "Currency Code - Supported currencies: ${CurrencyService.getSupportedCurrencies()}" }
+                    }
                     response {
                         HttpStatusCode.OK to { description = "List of booked cars"; body<List<CarResponse>>() }
                     }
                 }) {
+                    val currencyCode = call.request.queryParameters["currencyCode"] ?: "USD"
                     val principal = call.principal<JwtPrincipal>()!!
                     val cars = carService.listBookedByUser(principal.userId)
-                    call.respond(HttpStatusCode.OK, cars.map { it.toResponse(blobStorageService = blobStorage) })
+                    call.respond(HttpStatusCode.OK, cars.map { it.toResponse(blobStorageService = blobStorage, currencyCode = currencyCode) })
                 }
 
                 delete({

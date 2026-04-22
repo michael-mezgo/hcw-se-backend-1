@@ -22,7 +22,7 @@ class CarTest : BaseTest() {
             manufacturer = "BMW",
             model = "3 Series",
             year = 2022,
-            pricePerDay = 89.99,
+            pricePerDayInUSD = 89.99,
             description = "A sporty sedan",
             transmission = "AUTOMATIC",
             power = 184,
@@ -92,7 +92,7 @@ class CarTest : BaseTest() {
             assertEquals("BMW", car.manufacturer)
             assertEquals("3 Series", car.model)
             assertEquals(2022, car.year)
-            assertEquals(89.99, car.pricePerDay)
+            assertEquals(89.99, car.pricePerDay.amount)
         }
     }
 
@@ -154,14 +154,14 @@ class CarTest : BaseTest() {
         val id = createCar(client)
         client.patch("/cars/$id") {
             contentType(ContentType.Application.Json)
-            setBody(CarUpdate(manufacturer = "Audi", pricePerDay = 99.0))
+            setBody(CarUpdate(manufacturer = "Audi", pricePerDayInUSD = 99.0))
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
         }
         client.get("/cars/$id").apply {
             val car = body<CarResponse>()
             assertEquals("Audi", car.manufacturer)
-            assertEquals(99.0, car.pricePerDay)
+            assertEquals(99.0, car.pricePerDay.amount)
         }
     }
 

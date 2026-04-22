@@ -4,6 +4,7 @@ import at.ac.hcw.se.routes.configureAdminRoutes
 import at.ac.hcw.se.routes.configureCarRoutes
 import at.ac.hcw.se.routes.configureCurrencyRoutes
 import at.ac.hcw.se.routes.configureUserRoutes
+import at.ac.hcw.se.service.CurrencyService
 import io.github.cdimascio.dotenv.dotenv
 import io.ktor.server.application.*
 
@@ -23,6 +24,8 @@ fun Application.module() {
         log.warn("AZURE_STORAGE_CONNECTION_STRING not found; blob storage routes will not be available")
         null
     }
+    val apiKey = dotenv["API_KEY_CURRENCY"] ?: error("API key is not set")
+    CurrencyService.init(apiKey)
 
     configureHTTP()
     configureSerialization()

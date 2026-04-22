@@ -1,7 +1,6 @@
 package at.ac.hcw.se.business
 
 import at.ac.hcw.se.BlobStorageService
-import at.ac.hcw.se.dto.AdminCarResponse
 import at.ac.hcw.se.dto.CarResponse
 import at.ac.hcw.se.dto.CoordinateDto
 
@@ -26,28 +25,12 @@ class Car(
         return blobStorageService.getSignedUrl(blobName = imageName, expiryMinutes = 15)
     }
 
-    fun toAdminResponse(blobStorageService: BlobStorageService?) = AdminCarResponse(
+    fun toResponse(blobStorageService: BlobStorageService?, currencyCode: String) = CarResponse(
         id = id,
         manufacturer = manufacturer,
         model = model,
         year = year,
-        pricePerDay = pricePerDay,
-        description = description,
-        imageUrl = resolveImageUrl(blobStorageService),
-        transmission = transmission,
-        power = power,
-        fuelType = fuelType,
-        isAvailable = isAvailable,
-        location = CoordinateDto(location.latitude, location.longitude),
-        bookedBy = bookedBy?.toResponse(),
-    )
-
-    fun toResponse(blobStorageService: BlobStorageService?) = CarResponse(
-        id = id,
-        manufacturer = manufacturer,
-        model = model,
-        year = year,
-        pricePerDay = pricePerDay,
+        pricePerDay = at.ac.hcw.se.service.CurrencyService.convertFromUSD(pricePerDay, currencyCode),
         description = description,
         imageUrl = resolveImageUrl(blobStorageService),
         transmission = transmission,

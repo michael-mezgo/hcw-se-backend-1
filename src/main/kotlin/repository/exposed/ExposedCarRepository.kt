@@ -28,7 +28,7 @@ class ExposedCarRepository(
                 manufacturer = dto.manufacturer
                 model = dto.model
                 year = dto.year
-                price_per_day = dto.pricePerDay
+                price_per_day = dto.pricePerDayInUSD
                 description = dto.description
                 image = dto.imageUrl
                 transmission = Transmission.valueOf(dto.transmission)
@@ -61,7 +61,7 @@ class ExposedCarRepository(
             dto.manufacturer?.let { car.manufacturer = it }
             dto.model?.let { car.model = it }
             dto.year?.let { car.year = it }
-            dto.pricePerDay?.let { car.price_per_day = it }
+            dto.pricePerDayInUSD?.let { car.price_per_day = it }
             dto.description?.let { car.description = it }
             dto.imageUrl?.let { car.image = it }
             dto.transmission?.let { car.transmission = Transmission.valueOf(it) }
