@@ -312,7 +312,7 @@ class CarTest : BaseTest() {
         val id = createCar(adminClient)
         val userClient = loginAsUser()
         userClient.post("/cars/$id/book")
-        adminClient.get("/cars").apply {
+        adminClient.get("/cars?available=true").apply {
             assertEquals(HttpStatusCode.OK, status)
             val cars = body<List<CarResponse>>()
             assertTrue(cars.none { it.id == id })

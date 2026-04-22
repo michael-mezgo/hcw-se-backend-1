@@ -87,16 +87,25 @@ fun Application.configureCarRoutes(blobStorage: BlobStorageService? = null) {
                 post("/{id}/unbook", {
                     tags("Cars")
                     summary = "Unbook a car"
-                    description = "Releases a booking on a specific car."
+                    description = "Releases a booking on a specific car. Users can only unbook their own bookings; admins can unbook any car."
                     request { pathParameter<Int>("id") { description = "Car ID" } }
                     response {
                         HttpStatusCode.OK to { description = "Car unbooked successfully" }
+                        HttpStatusCode.Forbidden to { description = "You can only unbook your own bookings" }
                         HttpStatusCode.NotFound to { description = "Car not found" }
                         HttpStatusCode.Conflict to { description = "Car is not booked" }
                     }
                 }) {
+                    val principal = call.principal<JwtPrincipal>()!!
                     val id = call.parameters["id"]?.toIntOrNull()
                         ?: throw ServiceException.BadRequest("Invalid car ID")
+                    if (!principal.isAdmin) {
+                        val car = carService.getById(id)
+                            ?: throw ServiceException.NotFound("Car not found")
+                        val bookedBy = car.bookedBy
+                        if (bookedBy != null && bookedBy.id != principal.userId)
+                            throw ServiceException.Forbidden("You can only unbook your own bookings")
+                    }
                     when (carService.unbook(id)) {
                         BookingResult.CarNotFound -> throw ServiceException.NotFound("Car not found")
                         BookingResult.CarUnavailable -> throw ServiceException.Conflict("Car is not booked")
