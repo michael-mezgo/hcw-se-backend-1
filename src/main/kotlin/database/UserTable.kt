@@ -12,4 +12,5 @@ object UserTable : IntIdTable("users") {
     val licenseValidUntil = varchar("license_valid_until", 10)  // ISO 8601: YYYY-MM-DD
     val isAdmin           = bool("is_admin").default(false)
     val isLocked          = bool("is_locked").default(false)
+    val preferredCurrency = varchar("preferred_currency", 3).default("USD")
 }

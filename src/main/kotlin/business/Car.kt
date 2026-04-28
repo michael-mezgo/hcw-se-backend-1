@@ -1,5 +1,6 @@
 package at.ac.hcw.se.business
 
+import at.ac.hcw.se.BlobStorageService
 import at.ac.hcw.se.dto.CarResponse
 import at.ac.hcw.se.dto.CoordinateDto
 
@@ -10,22 +11,28 @@ class Car(
     val year: Int,
     val pricePerDay: Double,
     val description: String,
-    val imageUrl: String,
-    val transmission: String, //TODO: Use enums
+    val imageName: String,
+    val transmission: String,
     val power: Int,
-    val fuelType: String, //TODO: Use enums
-    val isAvailable: Boolean,
+    val fuelType: String,
+    val bookedBy: User?,
     val location: Coordinate,
 ) {
+    val isAvailable: Boolean get() = bookedBy == null
 
-    fun toResponse() = CarResponse(
+    private fun resolveImageUrl(blobStorageService: BlobStorageService?): String {
+        if (imageName.isEmpty() || blobStorageService == null) return ""
+        return blobStorageService.getSignedUrl(blobName = imageName, expiryMinutes = 15)
+    }
+
+    fun toResponse(blobStorageService: BlobStorageService?, currencyCode: String) = CarResponse(
         id = id,
         manufacturer = manufacturer,
         model = model,
         year = year,
-        pricePerDay = pricePerDay,
+        pricePerDay = at.ac.hcw.se.service.CurrencyService.convertFromUSD(pricePerDay, currencyCode),
         description = description,
-        imageUrl = imageUrl,
+        imageUrl = resolveImageUrl(blobStorageService),
         transmission = transmission,
         power = power,
         fuelType = fuelType,

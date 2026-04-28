@@ -22,7 +22,7 @@ class CarTest : BaseTest() {
             manufacturer = "BMW",
             model = "3 Series",
             year = 2022,
-            pricePerDay = 89.99,
+            pricePerDayInUSD = 89.99,
             description = "A sporty sedan",
             transmission = "AUTOMATIC",
             power = 184,
@@ -92,7 +92,7 @@ class CarTest : BaseTest() {
             assertEquals("BMW", car.manufacturer)
             assertEquals("3 Series", car.model)
             assertEquals(2022, car.year)
-            assertEquals(89.99, car.pricePerDay)
+            assertEquals(89.99, car.pricePerDay.amount)
         }
     }
 
@@ -153,15 +153,16 @@ class CarTest : BaseTest() {
         val client = loginAsAdmin()
         val id = createCar(client)
         client.patch("/cars/$id") {
-            contentType(ContentType.Application.Json)
-            setBody(CarUpdate(manufacturer = "Audi", pricePerDay = 99.0))
+            setBody(MultiPartFormDataContent(formData {
+                append("data", Json.encodeToString(CarUpdate(manufacturer = "Audi", pricePerDayInUSD = 99.0)))
+            }))
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
         }
         client.get("/cars/$id").apply {
             val car = body<CarResponse>()
             assertEquals("Audi", car.manufacturer)
-            assertEquals(99.0, car.pricePerDay)
+            assertEquals(99.0, car.pricePerDay.amount)
         }
     }
 
@@ -169,8 +170,9 @@ class CarTest : BaseTest() {
     fun testAdminUpdateCarNotFound() = testApp {
         val client = loginAsAdmin()
         client.patch("/cars/99999") {
-            contentType(ContentType.Application.Json)
-            setBody(CarUpdate(manufacturer = "Audi"))
+            setBody(MultiPartFormDataContent(formData {
+                append("data", Json.encodeToString(CarUpdate(manufacturer = "Audi")))
+            }))
         }.apply {
             assertEquals(HttpStatusCode.NotFound, status)
         }
@@ -230,13 +232,91 @@ class CarTest : BaseTest() {
         }
     }
 
+    // ── Book / Unbook car ─────────────────────────────────────────────────────
+
     @Test
-    fun testAdminDeleteCarForbiddenForUser() = testApp {
+    fun testBookCar() = testApp {
         val adminClient = loginAsAdmin()
         val id = createCar(adminClient)
         val userClient = loginAsUser()
-        userClient.delete("/cars/$id").apply {
-            assertEquals(HttpStatusCode.Forbidden, status)
+        userClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+    }
+
+    @Test
+    fun testBookCarNotFound() = testApp {
+        val userClient = loginAsUser()
+        userClient.post("/cars/99999/book").apply {
+            assertEquals(HttpStatusCode.NotFound, status)
+        }
+    }
+
+    @Test
+    fun testBookCarAlreadyBooked() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val userClient = loginAsUser()
+        userClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+        userClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.Conflict, status)
+        }
+    }
+
+    @Test
+    fun testBookCarRequiresAuth() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val anonClient = jsonClient()
+        anonClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.Unauthorized, status)
+        }
+    }
+
+    @Test
+    fun testUnbookCar() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val userClient = loginAsUser()
+        userClient.post("/cars/$id/book").apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+        userClient.post("/cars/$id/unbook").apply {
+            assertEquals(HttpStatusCode.OK, status)
+        }
+    }
+
+    @Test
+    fun testUnbookCarNotFound() = testApp {
+        val userClient = loginAsUser()
+        userClient.post("/cars/99999/unbook").apply {
+            assertEquals(HttpStatusCode.NotFound, status)
+        }
+    }
+
+    @Test
+    fun testUnbookCarNotBooked() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val userClient = loginAsUser()
+        userClient.post("/cars/$id/unbook").apply {
+            assertEquals(HttpStatusCode.Conflict, status)
+        }
+    }
+
+    @Test
+    fun testBookedCarNotListedAsAvailable() = testApp {
+        val adminClient = loginAsAdmin()
+        val id = createCar(adminClient)
+        val userClient = loginAsUser()
+        userClient.post("/cars/$id/book")
+        adminClient.get("/cars?available=true").apply {
+            assertEquals(HttpStatusCode.OK, status)
+            val cars = body<List<CarResponse>>()
+            assertTrue(cars.none { it.id == id })
         }
     }
 }
+

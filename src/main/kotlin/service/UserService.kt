@@ -35,6 +35,7 @@ object UserService {
                 lastName = dto.lastName
                 licenseNumber = dto.licenseNumber
                 licenseValidUntil = dto.licenseValidUntil
+                preferredCurrency = dto.preferredCurrency
             }.id.value
         }
 
@@ -49,6 +50,7 @@ object UserService {
                 licenseNumber = dto.licenseNumber
                 licenseValidUntil = dto.licenseValidUntil
                 isAdmin = dto.isAdmin
+                preferredCurrency = dto.preferredCurrency
             }.id.value
         }
 
@@ -80,6 +82,7 @@ object UserService {
             dto.lastName?.let { entity.lastName = it }
             dto.licenseNumber?.let { entity.licenseNumber = it }
             dto.licenseValidUntil?.let { entity.licenseValidUntil = it }
+            dto.preferredCurrency?.let { entity.preferredCurrency = it }
             true
         }
 
@@ -94,6 +97,7 @@ object UserService {
             dto.licenseValidUntil?.let { entity.licenseValidUntil = it }
             dto.isAdmin?.let { entity.isAdmin = it }
             dto.isLocked?.let { entity.isLocked = it }
+            dto.preferredCurrency?.let { entity.preferredCurrency = it }
             true
         }
 

@@ -2,9 +2,9 @@ package at.ac.hcw.se
 
 import at.ac.hcw.se.routes.configureAdminRoutes
 import at.ac.hcw.se.routes.configureCarRoutes
-import at.ac.hcw.se.routes.configureBlobRoutes
 import at.ac.hcw.se.routes.configureCurrencyRoutes
 import at.ac.hcw.se.routes.configureUserRoutes
+import at.ac.hcw.se.service.CurrencyService
 import io.github.cdimascio.dotenv.dotenv
 import io.ktor.server.application.*
 
@@ -24,6 +24,9 @@ fun Application.module() {
         log.warn("AZURE_STORAGE_CONNECTION_STRING not found; blob storage routes will not be available")
         null
     }
+    val apiKey = dotenv["API_KEY_CURRENCY"] ?: error("API key is not set")
+    val wsdlServiceUrl = dotenv["WSDL_URL"] ?: "http://localhost:5125"
+    CurrencyService.init(apiKey, wsdlServiceUrl)
 
     configureHTTP()
     configureSerialization()
@@ -31,10 +34,9 @@ fun Application.module() {
     configureStatusPages()
     configureDatabases(blobStorage)
     configureSecurity()
-    configureUserRoutes()
+    configureUserRoutes(blobStorage)
     configureAdminRoutes(blobStorage)
-    configureCarRoutes()
-    blobStorage?.let { configureBlobRoutes(it) }
+    configureCarRoutes(blobStorage)
     configureCurrencyRoutes()
     configureRouting()
 }

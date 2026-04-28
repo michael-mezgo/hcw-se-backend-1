@@ -14,7 +14,7 @@ object CarTable : IntIdTable("cars") {
     val transmission = enumerationByName("transmission", 50, Transmission::class)
     val power = integer("power")
     val fuel_type = enumerationByName("fuel_type", 50, FuelType::class)
-    val is_available = bool("is_available")
+    val booked_by = reference("booked_by_user_id", UserTable).nullable()
     val latitude = double("latitude")
     val longitude = double("longitude")
 }

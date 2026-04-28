@@ -1,6 +1,7 @@
 package at.ac.hcw.se.routes
 
 import at.ac.hcw.se.BlobStorageService
+import at.ac.hcw.se.carService
 import at.ac.hcw.se.dto.*
 import at.ac.hcw.se.business.Admin
 import at.ac.hcw.se.service.ServiceException
@@ -149,30 +150,80 @@ fun Application.configureAdminRoutes(blobStorage: BlobStorageService? = null) {
                     }
 
                     val dto = carData ?: throw ServiceException.BadRequest("Missing 'data' form field with car JSON")
-                    val finalDto = if (imageUrl != null) dto.copy(imageUrl = imageUrl!!) else dto
+                    val finalDto = if (imageUrl != null) dto.copy(imageUrl = imageUrl) else dto
                     val id = admin.createCar(finalDto)
                     call.respond(HttpStatusCode.Created, mapOf("id" to id))
+                }
+
+                get("/{id}/booking", {
+                    tags("Admin - Cars")
+                    summary = "Get booking for a car"
+                    description = "Returns the user who booked this car, or 404 if the car is not booked. Requires admin privileges."
+                    request { pathParameter<Int>("id") { description = "Car ID" } }
+                    response {
+                        HttpStatusCode.OK to { description = "Booking details"; body<BookingResponse>() }
+                        HttpStatusCode.Forbidden to { description = "Admin privileges required" }
+                        HttpStatusCode.NotFound to { description = "Car not found or not booked" }
+                    }
+                }) {
+                    call.toAdmin()
+                    val id = call.parameters["id"]?.toIntOrNull()
+                        ?: throw ServiceException.BadRequest("Invalid car ID")
+                    val car = carService.getById(id)
+                        ?: throw ServiceException.NotFound("Car not found")
+                    val bookedBy = car.bookedBy
+                        ?: throw ServiceException.NotFound("Car is not booked")
+                    call.respond(HttpStatusCode.OK, BookingResponse(
+                        carId = car.id,
+                        bookedBy = bookedBy.toResponse(),
+                    ))
                 }
 
                 patch("/{id}", {
                     tags("Admin - Cars")
                     summary = "Update a car"
-                    description = "Updates car details. All fields are optional. Requires admin privileges."
+                    description = "Updates car details. Accepts multipart/form-data with a 'data' part (JSON car fields) and an optional 'image' part (image file uploaded to Azure Blob Storage). All fields are optional. Requires admin privileges."
                     request {
                         pathParameter<Int>("id") { description = "Car ID" }
-                        body<CarUpdate> { description = "Fields to update (all optional)" }
                     }
                     response {
                         HttpStatusCode.OK to { description = "Car updated successfully" }
                         HttpStatusCode.Forbidden to { description = "Admin privileges required" }
                         HttpStatusCode.NotFound to { description = "Car not found" }
+                        HttpStatusCode.BadRequest to { description = "Missing or invalid car data" }
                     }
                 }) {
                     val admin = call.toAdmin()
                     val id = call.parameters["id"]?.toIntOrNull()
                         ?: throw ServiceException.BadRequest("Invalid car ID")
-                    val dto = call.receive<CarUpdate>()
-                    admin.updateCar(id, dto)
+
+                    var carData: CarUpdate? = null
+                    var newImageUrl: String? = null
+
+                    call.receiveMultipart().forEachPart { part ->
+                        when {
+                            part is PartData.FormItem && part.name == "data" -> {
+                                carData = Json.decodeFromString(part.value)
+                            }
+                            part is PartData.FileItem && part.name == "image" && blobStorage != null -> {
+                                val bytes = part.provider().readRemaining().readByteArray()
+                                val ext = part.originalFileName?.substringAfterLast('.', "jpg") ?: "jpg"
+                                val blobName = "cars/${UUID.randomUUID()}.$ext"
+                                blobStorage.upload(blobName, bytes)
+                                newImageUrl = blobName
+                            }
+                        }
+                        part.dispose()
+                    }
+
+                    val dto = carData ?: throw ServiceException.BadRequest("Missing 'data' form field with car JSON")
+                    if (newImageUrl != null) {
+                        val oldImage = carService.getById(id)?.imageName?.takeIf { it.isNotEmpty() }
+                        admin.updateCar(id, dto.copy(imageUrl = newImageUrl))
+                        if (oldImage != null) blobStorage?.delete(oldImage)
+                    } else {
+                        admin.updateCar(id, dto)
+                    }
                     call.respond(HttpStatusCode.OK, mapOf("message" to "Car updated successfully"))
                 }
 
@@ -193,6 +244,7 @@ fun Application.configureAdminRoutes(blobStorage: BlobStorageService? = null) {
                     admin.deleteCar(id)
                     call.respond(HttpStatusCode.NoContent)
                 }
+
             }
         }
     }
