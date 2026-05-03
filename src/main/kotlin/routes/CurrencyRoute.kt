@@ -9,7 +9,7 @@ import io.ktor.server.routing.*
 
 fun Application.configureCurrencyRoutes() {
     routing {
-        route("/currency-service") {
+        route("/currencies") {
             get({}){
                 val result = CurrencyService.getSupportedCurrencies()
                 call.respond(HttpStatusCode.OK, result)
