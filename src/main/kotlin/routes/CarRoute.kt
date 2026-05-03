@@ -67,7 +67,7 @@ fun Application.configureCarRoutes(blobStorage: BlobStorageService? = null) {
                     description = "Books a specific car for the authenticated user."
                     request { pathParameter<Int>("id") { description = "Car ID" } }
                     response {
-                        HttpStatusCode.OK to { description = "Car booked successfully" }
+                        HttpStatusCode.Created to { description = "Car booked successfully" }
                         HttpStatusCode.NotFound to { description = "Car or user not found" }
                         HttpStatusCode.Conflict to { description = "Car is not available" }
                     }
