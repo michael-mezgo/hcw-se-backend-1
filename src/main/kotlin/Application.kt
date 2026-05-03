@@ -1,6 +1,7 @@
 package at.ac.hcw.se
 
 import at.ac.hcw.se.routes.configureAdminRoutes
+import at.ac.hcw.se.routes.configureBookingRoutes
 import at.ac.hcw.se.routes.configureCarRoutes
 import at.ac.hcw.se.routes.configureCurrencyRoutes
 import at.ac.hcw.se.routes.configureUserRoutes
@@ -37,6 +38,7 @@ fun Application.module() {
     configureUserRoutes(blobStorage)
     configureAdminRoutes(blobStorage)
     configureCarRoutes(blobStorage)
+    configureBookingRoutes(blobStorage)
     configureCurrencyRoutes()
     configureRouting()
 }
