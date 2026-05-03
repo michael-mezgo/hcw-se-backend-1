@@ -94,7 +94,7 @@ fun Application.configureUserRoutes(blobStorage: BlobStorageService? = null) {
                     val user = call.toUser()
                     val update = call.receive<UserUpdate>()
                     user.updateProfile(update)
-                    call.respond(HttpStatusCode.OK, mapOf("message" to "User updated successfully"))
+                    call.respond(HttpStatusCode.OK, update)
                 }
 
                 get("/cars", {
