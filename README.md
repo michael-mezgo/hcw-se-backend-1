@@ -1,3 +1,5 @@
+This repo has been archived on 2026-05-04.
+
 # CarRentalService
 
 This project was created using the [Ktor Project Generator](https://start.ktor.io).
