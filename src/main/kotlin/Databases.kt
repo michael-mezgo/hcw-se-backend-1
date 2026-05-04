@@ -21,8 +21,7 @@ lateinit var carService: CarService
     private set
 
 fun Application.configureDatabases(blobStorage: BlobStorageService? = null) {
-    val embedded = System.getenv("EMBEDDED")?.toBooleanStrictOrNull()
-        ?: environment.config.propertyOrNull("embedded")?.getString()?.toBooleanStrictOrNull()
+    val embedded = environment.config.propertyOrNull("embedded")?.getString()?.toBooleanStrictOrNull()
         ?: true
     val database = connectToDatabase(embedded = embedded)
     transaction(database) {
