@@ -1,5 +1,7 @@
 package at.ac.hcw.se
 
+import at.ac.hcw.se.dto.BookingCreateRequest
+import at.ac.hcw.se.dto.BookingResponse
 import at.ac.hcw.se.dto.CarCreateRequest
 import at.ac.hcw.se.dto.CarResponse
 import at.ac.hcw.se.dto.CarUpdate
@@ -239,15 +241,23 @@ class CarTest : BaseTest() {
         val adminClient = loginAsAdmin()
         val id = createCar(adminClient)
         val userClient = loginAsUser()
-        userClient.post("/cars/$id/book").apply {
-            assertEquals(HttpStatusCode.OK, status)
+        userClient.post("/bookings") {
+            contentType(ContentType.Application.Json)
+            setBody(BookingCreateRequest(id))
+        }.apply {
+            assertEquals(HttpStatusCode.Created, status)
+            val booking = body<BookingResponse>()
+            assertEquals(id, booking.carId)
         }
     }
 
     @Test
     fun testBookCarNotFound() = testApp {
         val userClient = loginAsUser()
-        userClient.post("/cars/99999/book").apply {
+        userClient.post("/bookings") {
+            contentType(ContentType.Application.Json)
+            setBody(BookingCreateRequest(99999))
+        }.apply {
             assertEquals(HttpStatusCode.NotFound, status)
         }
     }
@@ -257,10 +267,16 @@ class CarTest : BaseTest() {
         val adminClient = loginAsAdmin()
         val id = createCar(adminClient)
         val userClient = loginAsUser()
-        userClient.post("/cars/$id/book").apply {
-            assertEquals(HttpStatusCode.OK, status)
+        userClient.post("/bookings") {
+            contentType(ContentType.Application.Json)
+            setBody(BookingCreateRequest(id))
+        }.apply {
+            assertEquals(HttpStatusCode.Created, status)
         }
-        userClient.post("/cars/$id/book").apply {
+        userClient.post("/bookings") {
+            contentType(ContentType.Application.Json)
+            setBody(BookingCreateRequest(id))
+        }.apply {
             assertEquals(HttpStatusCode.Conflict, status)
         }
     }
@@ -270,7 +286,10 @@ class CarTest : BaseTest() {
         val adminClient = loginAsAdmin()
         val id = createCar(adminClient)
         val anonClient = jsonClient()
-        anonClient.post("/cars/$id/book").apply {
+        anonClient.post("/bookings") {
+            contentType(ContentType.Application.Json)
+            setBody(BookingCreateRequest(id))
+        }.apply {
             assertEquals(HttpStatusCode.Unauthorized, status)
         }
     }
@@ -280,18 +299,21 @@ class CarTest : BaseTest() {
         val adminClient = loginAsAdmin()
         val id = createCar(adminClient)
         val userClient = loginAsUser()
-        userClient.post("/cars/$id/book").apply {
-            assertEquals(HttpStatusCode.OK, status)
+        userClient.post("/bookings") {
+            contentType(ContentType.Application.Json)
+            setBody(BookingCreateRequest(id))
+        }.apply {
+            assertEquals(HttpStatusCode.Created, status)
         }
-        userClient.post("/cars/$id/unbook").apply {
-            assertEquals(HttpStatusCode.OK, status)
+        userClient.delete("/bookings/$id").apply {
+            assertEquals(HttpStatusCode.NoContent, status)
         }
     }
 
     @Test
     fun testUnbookCarNotFound() = testApp {
         val userClient = loginAsUser()
-        userClient.post("/cars/99999/unbook").apply {
+        userClient.delete("/bookings/99999").apply {
             assertEquals(HttpStatusCode.NotFound, status)
         }
     }
@@ -301,7 +323,7 @@ class CarTest : BaseTest() {
         val adminClient = loginAsAdmin()
         val id = createCar(adminClient)
         val userClient = loginAsUser()
-        userClient.post("/cars/$id/unbook").apply {
+        userClient.delete("/bookings/$id").apply {
             assertEquals(HttpStatusCode.Conflict, status)
         }
     }
@@ -311,7 +333,10 @@ class CarTest : BaseTest() {
         val adminClient = loginAsAdmin()
         val id = createCar(adminClient)
         val userClient = loginAsUser()
-        userClient.post("/cars/$id/book")
+        userClient.post("/bookings") {
+            contentType(ContentType.Application.Json)
+            setBody(BookingCreateRequest(id))
+        }
         adminClient.get("/cars?available=true").apply {
             assertEquals(HttpStatusCode.OK, status)
             val cars = body<List<CarResponse>>()

@@ -3,6 +3,9 @@ package at.ac.hcw.se.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class BookingCreateRequest(val carId: Int)
+
+@Serializable
 data class BookingResponse(
     val carId: Int,
     val bookedBy: UserResponse,

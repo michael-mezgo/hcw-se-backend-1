@@ -1,9 +1,7 @@
 package at.ac.hcw.se.routes
 
 import at.ac.hcw.se.BlobStorageService
-import at.ac.hcw.se.carService
 import at.ac.hcw.se.service.UserService
-import at.ac.hcw.se.dto.CarResponse
 import at.ac.hcw.se.dto.LoginResponse
 import at.ac.hcw.se.dto.UserLoginRequest
 import at.ac.hcw.se.dto.UserRegistration
@@ -12,7 +10,6 @@ import at.ac.hcw.se.dto.JwtPrincipal
 import at.ac.hcw.se.dto.UserUpdate
 import at.ac.hcw.se.service.Auth
 import at.ac.hcw.se.business.User
-import at.ac.hcw.se.service.CurrencyService
 import io.github.smiley4.ktorswaggerui.dsl.routing.delete
 import io.github.smiley4.ktorswaggerui.dsl.routing.get
 import io.github.smiley4.ktorswaggerui.dsl.routing.patch
@@ -24,6 +21,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
+@Suppress("UNUSED_PARAMETER")
 fun Application.configureUserRoutes(blobStorage: BlobStorageService? = null) {
     routing {
 
@@ -86,7 +84,7 @@ fun Application.configureUserRoutes(blobStorage: BlobStorageService? = null) {
                     description = "Updates email, password, or other profile fields. All fields are optional."
                     request { body<UserUpdate> { description = "Fields to update (all optional)" } }
                     response {
-                        HttpStatusCode.OK to { description = "User updated successfully" }
+                        HttpStatusCode.OK to { description = "Updated user profile"; body<UserResponse>() }
                         HttpStatusCode.Unauthorized to { description = "Not authenticated" }
                         HttpStatusCode.NotFound to { description = "User not found" }
                     }
@@ -94,24 +92,9 @@ fun Application.configureUserRoutes(blobStorage: BlobStorageService? = null) {
                     val user = call.toUser()
                     val update = call.receive<UserUpdate>()
                     user.updateProfile(update)
-                    call.respond(HttpStatusCode.OK, mapOf("message" to "User updated successfully"))
-                }
-
-                get("/cars", {
-                    tags("Users")
-                    summary = "List my booked cars"
-                    description = "Returns all cars currently booked by the authenticated user."
-                    request {
-                        queryParameter<String>("currencyCode") { description = "Currency Code - Supported currencies: ${CurrencyService.getSupportedCurrencies()}" }
-                    }
-                    response {
-                        HttpStatusCode.OK to { description = "List of booked cars"; body<List<CarResponse>>() }
-                    }
-                }) {
-                    val currencyCode = call.request.queryParameters["currencyCode"] ?: "USD"
-                    val principal = call.principal<JwtPrincipal>()!!
-                    val cars = carService.listBookedByUser(principal.userId)
-                    call.respond(HttpStatusCode.OK, cars.map { it.toResponse(blobStorageService = blobStorage, currencyCode = currencyCode) })
+                    val updated = UserService.read(user.id)
+                        ?: throw at.ac.hcw.se.service.ServiceException.NotFound("User not found")
+                    call.respond(HttpStatusCode.OK, updated.toResponse())
                 }
 
                 delete({

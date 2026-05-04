@@ -48,6 +48,7 @@ class UserTest : BaseTest() {
             setBody(UserUpdate(email = "updated@example.com"))
         }.apply {
             assertEquals(HttpStatusCode.OK, status)
+            assertEquals("updated@example.com", body<UserResponse>().email)
         }
     }
 

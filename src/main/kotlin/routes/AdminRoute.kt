@@ -155,30 +155,6 @@ fun Application.configureAdminRoutes(blobStorage: BlobStorageService? = null) {
                     call.respond(HttpStatusCode.Created, mapOf("id" to id))
                 }
 
-                get("/{id}/booking", {
-                    tags("Admin - Cars")
-                    summary = "Get booking for a car"
-                    description = "Returns the user who booked this car, or 404 if the car is not booked. Requires admin privileges."
-                    request { pathParameter<Int>("id") { description = "Car ID" } }
-                    response {
-                        HttpStatusCode.OK to { description = "Booking details"; body<BookingResponse>() }
-                        HttpStatusCode.Forbidden to { description = "Admin privileges required" }
-                        HttpStatusCode.NotFound to { description = "Car not found or not booked" }
-                    }
-                }) {
-                    call.toAdmin()
-                    val id = call.parameters["id"]?.toIntOrNull()
-                        ?: throw ServiceException.BadRequest("Invalid car ID")
-                    val car = carService.getById(id)
-                        ?: throw ServiceException.NotFound("Car not found")
-                    val bookedBy = car.bookedBy
-                        ?: throw ServiceException.NotFound("Car is not booked")
-                    call.respond(HttpStatusCode.OK, BookingResponse(
-                        carId = car.id,
-                        bookedBy = bookedBy.toResponse(),
-                    ))
-                }
-
                 patch("/{id}", {
                     tags("Admin - Cars")
                     summary = "Update a car"
