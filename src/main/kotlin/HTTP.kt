@@ -18,6 +18,7 @@ fun Application.configureHTTP() {
         allowHeader(HttpHeaders.ContentType)
         allowHeader("MyCustomHeader")
         allowHost("localhost:5173", schemes = listOf("http"))
+        allowHost("se1.mezgolits.at", schemes = listOf("https"))
         allowCredentials = true
     }
 }

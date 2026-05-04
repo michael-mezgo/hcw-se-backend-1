@@ -1,0 +1,63 @@
+services:
+  caddy:
+    image: caddy:alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+
+  backend:
+    image: ghcr.io/michael-mezgo/hcw-se-backend-1:latest
+    environment:                                                                                                                                                                                                                         
+      WSDL_URL: http://currency-converter:8080                                                                                                                                                                                           
+      JWT_SECRET: ${JWT_SECRET}                                                                                                                                                                                                     
+      EMBEDDED: ${EMBEDDED_DB}                                                                                                                                                                                                                 
+      POSTGRES_URL: ${POSTGRES_URL}                                                                                                                                                                                  
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      API_KEY_CURRENCY: ${CURRENCY_API_KEY}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
+      AZURE_STORAGE_CONTAINER_NAME: ${AZURE_STORAGE_CONTAINER_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    depends_on:
+      currency-converter:
+        condition: service_healthy
+    restart: unless-stopped
+
+  currency-converter:
+    container_name: currency-converter
+    image: ghcr.io/michael-mezgo/hcw-se-currency-converter-1:latest
+    environment:
+      ECB_URL: ${ECB_URL}
+      API_KEY: ${CURRENCY_API_KEY}
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8080 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/michael-mezgo/hcw-se-frontend-1:latest
+    environment:
+      BACKEND_URL: http://backend:8080
+      VITE_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY}
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:
