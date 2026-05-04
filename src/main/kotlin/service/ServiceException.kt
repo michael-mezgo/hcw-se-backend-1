@@ -8,4 +8,5 @@ sealed class ServiceException(val status: HttpStatusCode, override val message: 
     class Unauthorized(message: String = "Invalid credentials") : ServiceException(HttpStatusCode.Unauthorized, message)
     class Forbidden(message: String = "Access denied") : ServiceException(HttpStatusCode.Forbidden, message)
     class BadRequest(message: String = "Invalid request") : ServiceException(HttpStatusCode.BadRequest, message)
+    class ServerError(message: String = "Server error") : ServiceException(HttpStatusCode.InternalServerError, message)
 }

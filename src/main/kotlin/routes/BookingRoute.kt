@@ -45,13 +45,12 @@ fun Application.configureBookingRoutes(blobStorage: BlobStorageService? = null) 
                         BookingResult.UserNotFound -> throw ServiceException.NotFound("User not found")
                         BookingResult.CarUnavailable -> throw ServiceException.Conflict("Car is not available")
                         BookingResult.CarBooked -> {
-                            val car = carService.getById(dto.carId)!!
                             call.respond(HttpStatusCode.Created, BookingResponse(
-                                carId = car.id,
+                                carId = dto.carId,
                                 bookedBy = user.toResponse(),
                             ))
                         }
-                        BookingResult.CarUnbooked -> {}
+                        BookingResult.CarUnbooked -> throw ServiceException.ServerError("Unexpected unbooking result")
                     }
                 }
 
@@ -82,7 +81,7 @@ fun Application.configureBookingRoutes(blobStorage: BlobStorageService? = null) 
                     response {
                         HttpStatusCode.NoContent to { description = "Booking cancelled" }
                         HttpStatusCode.Forbidden to { description = "You can only cancel your own bookings" }
-                        HttpStatusCode.NotFound to { description = "Car not found or not booked" }
+                        HttpStatusCode.NotFound to { description = "Car not found" }
                         HttpStatusCode.Conflict to { description = "Car is not booked" }
                     }
                 }) {
@@ -100,8 +99,8 @@ fun Application.configureBookingRoutes(blobStorage: BlobStorageService? = null) 
                         BookingResult.CarNotFound -> throw ServiceException.NotFound("Car not found")
                         BookingResult.CarUnavailable -> throw ServiceException.Conflict("Car is not booked")
                         BookingResult.CarUnbooked -> call.respond(HttpStatusCode.NoContent)
-                        BookingResult.CarBooked -> {}
-                        BookingResult.UserNotFound -> {}
+                        BookingResult.CarBooked -> throw ServiceException.ServerError("Unexpected unbooking result")
+                        BookingResult.UserNotFound -> throw ServiceException.ServerError("Unexpected unbooking result")
                     }
                 }
             }
